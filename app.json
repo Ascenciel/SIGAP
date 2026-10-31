@@ -11,7 +11,7 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Izinkan SIGAP memakai lokasi Anda untuk menampilkan posisi di peta."
+          "locationWhenInUsePermission": "Izinkan SIGAP memakai lokasi untuk menandai posisi Anda dan mencari alamat lokasi laporan."
         }
       ],
       "expo-web-browser"

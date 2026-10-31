@@ -15,6 +15,9 @@ function MapPreview({
   onReport,
   height = 175,
   userLocation,
+  selectable = false,
+  selectedLocation,
+  onLocationSelect,
 }) {
   const coordinates = reports.filter(
     report =>
@@ -23,6 +26,7 @@ function MapPreview({
   );
 
   const center = useMemo(() => {
+    if (selectedLocation) return selectedLocation;
     if (userLocation) {
       return {
         latitude: userLocation.latitude,
@@ -46,7 +50,7 @@ function MapPreview({
     }
 
     return SURABAYA;
-  }, [userLocation, reports]);
+  }, [userLocation, reports, selectedLocation]);
 
   const mapHtml = useMemo(() => {
     const markerData = coordinates.map(report => ({
@@ -70,6 +74,8 @@ function MapPreview({
     const safeCenter = JSON.stringify(center);
 
     const safeUserLocation = JSON.stringify(userLocation);
+    const safeSelectedLocation = JSON.stringify(selectedLocation);
+    const safeSelectable = JSON.stringify(selectable);
 
     const initialZoom = userLocation
       ? 14
@@ -122,6 +128,8 @@ function MapPreview({
             const markers = ${safeMarkers};
             const center = ${safeCenter};
             const userLocation = ${safeUserLocation};
+            const selectedLocation = ${safeSelectedLocation};
+            const selectable = ${safeSelectable};
 
             const map = L.map('map', {
               zoomControl: true
@@ -182,6 +190,21 @@ function MapPreview({
               .bindPopup('Lokasi Anda');
             }
 
+            let selectedMarker = null;
+            function showSelectedLocation(point) {
+              if (selectedMarker) map.removeLayer(selectedMarker);
+              selectedMarker = L.circleMarker([point.latitude, point.longitude], {
+                radius: 10, color: '#ffffff', weight: 3,
+                fillColor: '#087e70', fillOpacity: 1
+              }).addTo(map);
+            }
+            if (selectedLocation) showSelectedLocation(selectedLocation);
+            if (selectable) map.on('click', event => {
+              const point = { latitude: event.latlng.lat, longitude: event.latlng.lng };
+              showSelectedLocation(point);
+              window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'select-location', ...point }));
+            });
+
             function escapeHtml(value) {
               return String(value).replace(/[&<>"']/g, char => ({
                 '&': '&amp;',
@@ -195,7 +218,7 @@ function MapPreview({
         </body>
       </html>
     `;
-  }, [reports, userLocation, center]);
+  }, [reports, userLocation, center, selectable, selectedLocation]);
 
   const handleMessage = event => {
     try {
@@ -209,6 +232,8 @@ function MapPreview({
         if (selectedReport) {
           onReport?.(selectedReport);
         }
+      } else if (message.type === 'select-location' && Number.isFinite(message.latitude) && Number.isFinite(message.longitude)) {
+        onLocationSelect?.({ latitude: message.latitude, longitude: message.longitude });
       }
     } catch (error) {
       console.warn('Map message error:', error);

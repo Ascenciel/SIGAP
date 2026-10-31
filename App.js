@@ -211,7 +211,7 @@ export default function App() {
       updated: 'Baru saja',
       status: 'Menunggu verifikasi',
       source: 'Laporan warga · belum diperiksa',
-      note: '', latitude: -7.2756, longitude: 112.6426,
+      note: '', latitude: draft.latitude ?? -7.2756, longitude: draft.longitude ?? 112.6426,
     };
     setReports(previous => [report, ...previous]);
   };
