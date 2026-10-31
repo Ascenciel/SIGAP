@@ -16,10 +16,17 @@ function MapPreview({
   height = 175,
   userLocation,
 }) {
-  const coordinates = reports.filter(
-    report =>
-      Number.isFinite(Number(report.latitude)) &&
-      Number.isFinite(Number(report.longitude))
+  const coordinates = reports.filter(report =>
+    report.latitude !== null &&
+    report.latitude !== undefined &&
+    report.longitude !== null &&
+    report.longitude !== undefined &&
+    report.latitude !== '' &&
+    report.longitude !== '' &&
+    Number.isFinite(Number(report.latitude)) &&
+    Number.isFinite(Number(report.longitude)) &&
+    Math.abs(Number(report.latitude)) <= 90 &&
+    Math.abs(Number(report.longitude)) <= 180
   );
 
   const center = useMemo(() => {

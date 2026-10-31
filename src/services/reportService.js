@@ -250,4 +250,41 @@ export async function updateReportStatus(reportId, newStatus, note = '') {
     return mapReport(data);
 }
 
+
+export async function fetchReportPhotos(reportId) {
+    ensureSupabase();
+
+    const { data, error } = await supabase
+        .from('report_photos')
+        .select('id, report_id, storage_path, created_at')
+        .eq('report_id', reportId)
+        .order('created_at', { ascending: true });
+
+    if (error) throw error;
+
+    const photos = await Promise.all(
+        (data || []).map(async photo => {
+            const { data: signedData, error: signedError } =
+                await supabase.storage
+                    .from('report-photos')
+                    .createSignedUrl(photo.storage_path, 60 * 60);
+
+            if (signedError) {
+                console.warn('[Reports] Failed to create photo URL:', signedError);
+                return null;
+            }
+
+            return {
+                id: photo.id,
+                url: signedData.signedUrl,
+                storagePath: photo.storage_path,
+                createdAt: photo.created_at,
+            };
+        })
+    );
+
+    return photos.filter(Boolean);
+}
+
+
 export { STATUS_TO_DB, STATUS_FROM_DB };
