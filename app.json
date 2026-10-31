@@ -7,6 +7,11 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/sigap-logo.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#F4F7F6"
+    },
     "plugins": [
       [
         "expo-location",

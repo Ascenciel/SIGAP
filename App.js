@@ -1,6 +1,6 @@
 import 'expo-dev-client';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Linking, Platform, Pressable, SafeAreaView, StatusBar, Text, View } from 'react-native';
+import { Alert, Image, Linking, Platform, Pressable, SafeAreaView, StatusBar, Text, View } from 'react-native';
 import * as Location from 'expo-location';
 import * as WebBrowser from 'expo-web-browser';
 import * as ExpoLinking from 'expo-linking';
@@ -230,7 +230,7 @@ export default function App() {
   };
 
 
-  if (!authReady) return <SafeAreaView style={styles.app} />;
+  if (!authReady) return <SafeAreaView style={[styles.app, { alignItems: 'center', justifyContent: 'center' }]}><StatusBar barStyle="dark-content" backgroundColor={C.paper} /><Image source={require('./assets/sigap-logo.png')} resizeMode="contain" style={{ width: 320, height: 320 }} accessibilityLabel="Logo SIGAP" /></SafeAreaView>;
   if (!session) return <SafeAreaView style={styles.app}><StatusBar barStyle="dark-content" backgroundColor={C.paper} /><AuthScreen onSubmit={handleAuth} onGoogle={handleGoogle} configured={isSupabaseConfigured} /></SafeAreaView>;
 
   const navigate = id => { setSelected(null); setTab(id); };
@@ -278,8 +278,8 @@ export default function App() {
     <StatusBar barStyle="dark-content" backgroundColor={C.paper} />
     <View style={styles.header}>
       <Pressable onPress={() => navigate('home')} style={styles.brand}>
-        <View style={styles.brandMark}><Text style={styles.brandGlyph}>S</Text><View style={styles.brandDot} /></View>
-        <View><Text style={styles.brandName}>SIGAP</Text><Text style={styles.brandSub}>INFORMASI KOMUNITAS</Text></View>
+        <Image source={require('./assets/sigap-mark.png')} resizeMode="contain" style={{ width: 42, height: 42 }} accessibilityLabel="Logo perisai SIGAP" />
+        <View style={styles.brandCopy}><Text style={styles.brandName}>SIGAP</Text><Text style={styles.brandSub}>Sistem Informasi dan Gerak Aksi Penanggulangan Bencana</Text></View>
       </Pressable>
       {profileRole === 'moderator' ? <Pressable accessibilityLabel="Ganti tampilan warga atau moderator" onPress={() => { setSelected(null); setIsModerator(value => !value); }} style={[styles.modePill, isModerator && styles.modePillActive]}>
         <View style={[styles.modeDot, isModerator && { backgroundColor: '#B6E8D8' }]} />
