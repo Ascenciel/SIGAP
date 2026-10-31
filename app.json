@@ -5,6 +5,14 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Izinkan SIGAP memakai lokasi Anda untuk menampilkan posisi di peta."
+        }
+      ]
+    ],
     "splash": {
       "backgroundColor": "#F4F7F6"
     },

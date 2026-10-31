@@ -47,7 +47,7 @@ export default function App() {
       updated: 'Baru saja',
       status: 'Menunggu verifikasi',
       source: 'Laporan warga · belum diperiksa',
-      note: '', lat: 48, lon: 38,
+      note: '', latitude: -7.2756, longitude: 112.6426,
     };
     setReports(previous => [report, ...previous]);
   };
