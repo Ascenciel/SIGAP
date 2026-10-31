@@ -108,6 +108,7 @@ export async function fetchReports() {
 }
 
 // Mengirim laporan baru.
+
 export async function createReport(draft) {
     ensureSupabase();
 
@@ -144,11 +145,49 @@ export async function createReport(draft) {
         });
 
     if (historyError) {
-        console.warn('Laporan tersimpan, tetapi riwayat awal gagal:', historyError);
+        console.warn('[Reports] Initial history failed:', historyError);
+    }
+
+    // Upload foto jika pengguna memilih foto.
+    if (draft.photo?.uri) {
+        try {
+            const response = await fetch(draft.photo.uri);
+            const fileBlob = await response.blob();
+
+            const extension =
+                draft.photo.mimeType?.split('/')[1] ||
+                draft.photo.uri.split('.').pop()?.split('?')[0] ||
+                'jpg';
+
+            const filePath =
+                `${user.id}/${data.id}/${Date.now()}.${extension}`;
+
+            const { error: uploadError } = await supabase.storage
+                .from('report-photos')
+                .upload(filePath, fileBlob, {
+                    contentType: draft.photo.mimeType || 'image/jpeg',
+                    upsert: false,
+                });
+
+            if (uploadError) throw uploadError;
+
+            const { error: photoRecordError } = await supabase
+                .from('report_photos')
+                .insert({
+                    report_id: data.id,
+                    storage_path: filePath,
+                });
+
+            if (photoRecordError) throw photoRecordError;
+        } catch (photoError) {
+            // Laporan utama tetap tersimpan meskipun upload foto gagal.
+            console.warn('[Reports] Photo upload failed:', photoError);
+        }
     }
 
     return mapReport(data);
 }
+
 
 // Mengubah status laporan oleh moderator.
 export async function updateReportStatus(reportId, newStatus, note = '') {
