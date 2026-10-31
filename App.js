@@ -1,5 +1,7 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Linking, Platform, Pressable, StatusBar, Text, View } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
+import * as ExpoLinking from 'expo-linking';
 import C from './src/theme/colors';
 import styles from './src/theme/styles';
 import { SEED } from './src/data/reports';
@@ -13,6 +15,10 @@ import AidScreen from './src/screens/AidScreen';
 import NewsScreen from './src/screens/NewsScreen';
 import ModeratorScreen from './src/screens/ModeratorScreen';
 import DetailScreen from './src/screens/DetailScreen';
+import AuthScreen from './src/screens/AuthScreen';
+import { isSupabaseConfigured, supabase } from './src/services/supabase';
+
+WebBrowser.maybeCompleteAuthSession();
 
 const TABS = [
   { id: 'home', icon: '⌂', label: 'Beranda' },
@@ -23,6 +29,8 @@ const TABS = [
 ];
 
 export default function App() {
+  const [session, setSession] = useState(null);
+  const [authReady, setAuthReady] = useState(false);
   const [tab, setTab] = useState('home');
   const [isModerator, setIsModerator] = useState(false);
   const [reports, setReports] = useState(SEED);
@@ -31,6 +39,70 @@ export default function App() {
   const weather = useRemoteData(fetchWeather);
   const news = useRemoteData(fetchNews);
   const reportCount = useMemo(() => reports.length, [reports]);
+
+  useEffect(() => {
+    if (!supabase) { setAuthReady(true); return undefined; }
+    supabase.auth.getSession().then(({ data }) => { setSession(data.session); setAuthReady(true); });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      setSession(nextSession);
+      if (nextSession?.user) setTimeout(() => syncProfile(nextSession.user).catch(() => {}), 0);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const syncProfile = async user => {
+    if (!supabase || !user) return;
+    await supabase.from('profiles').upsert({
+      id: user.id,
+      email: user.email,
+      full_name: user.user_metadata?.full_name || user.user_metadata?.name || '',
+      avatar_url: user.user_metadata?.avatar_url || user.user_metadata?.picture || null,
+    }, { onConflict: 'id' });
+  };
+
+  const handleAuth = async ({ mode, name, email, password }) => {
+    if (mode === 'signup') {
+      const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { full_name: name } } });
+      if (error) throw error;
+      if (data.session && data.user) await syncProfile(data.user);
+      return data.session ? '' : 'Pendaftaran berhasil. Periksa email Anda untuk konfirmasi sebelum masuk.';
+    }
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+    await syncProfile(data.user);
+    return '';
+  };
+
+  const handleGoogle = async () => {
+    const redirectTo = Platform.OS === 'web' ? `${window.location.origin}/auth/callback` : ExpoLinking.createURL('auth/callback', { scheme: 'sigap' });
+    const { data, error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo, skipBrowserRedirect: true } });
+    if (error) throw error;
+    const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+    if (result.type !== 'success') return '';
+    const callbackUrl = new URL(result.url);
+    // Supabase can return a PKCE code in the query string, or tokens/errors in the fragment.
+    // Mobile deep links may also place the PKCE code in the fragment.
+    const fragment = new URLSearchParams(callbackUrl.hash.replace(/^#/, ''));
+    const query = callbackUrl.searchParams;
+    const oauthError = query.get('error_description') || query.get('error') || fragment.get('error_description') || fragment.get('error');
+    if (oauthError) throw new Error(oauthError);
+    const code = query.get('code') || fragment.get('code');
+    const access_token = fragment.get('access_token') || query.get('access_token');
+    const refresh_token = fragment.get('refresh_token') || query.get('refresh_token');
+    if (!code && (!access_token || !refresh_token)) {
+      const received = [...query.keys(), ...fragment.keys()].join(', ') || 'tidak ada parameter';
+      throw new Error(`Callback Google diterima tanpa kredensial login (${received}). Periksa Redirect URLs di Supabase dan pastikan ${redirectTo} tercantum persis.`);
+    }
+    const { data: sessionData, error: sessionError } = code
+      ? await supabase.auth.exchangeCodeForSession(code)
+      : await supabase.auth.setSession({ access_token, refresh_token });
+    if (sessionError) throw sessionError;
+    await syncProfile(sessionData.user);
+    return '';
+  };
+
+  if (!authReady) return <View style={styles.app} />;
+  if (!session) return <View style={styles.app}><StatusBar barStyle="dark-content" backgroundColor={C.paper} /><AuthScreen onSubmit={handleAuth} onGoogle={handleGoogle} configured={isSupabaseConfigured} /></View>;
 
   const navigate = id => { setSelected(null); setTab(id); };
   const chooseReport = report => setSelected(report.id);
@@ -85,6 +157,7 @@ export default function App() {
         <Text style={[styles.modeText, isModerator && { color: C.white }]}>{isModerator ? 'MODERATOR' : 'WARGA'}</Text>
         <Text style={[styles.modeChevron, isModerator && { color: C.white }]}>⌄</Text>
       </Pressable>
+      {session?.user ? <Pressable accessibilityLabel="Keluar" onPress={() => supabase.auth.signOut()} style={{ padding: 8 }}><Text style={{ color: C.muted, fontSize: 10, fontWeight: '700' }}>Keluar</Text></Pressable> : null}
     </View>
 
     <View style={styles.pageBar}><Text style={styles.pageTitle}>{pageTitle}</Text><Text style={styles.simTag}>{tab === 'news' && !selected ? 'SUMBER BERITA' : isModerator ? 'DEMO' : 'SIMULASI'}</Text></View>
