@@ -1,0 +1,20 @@
+{
+  "expo": {
+    "name": "SIGAP",
+    "slug": "sigap-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "backgroundColor": "#F4F7F6"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#F4F7F6"
+      }
+    }
+  }
+}
