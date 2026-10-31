@@ -46,7 +46,7 @@ export default function App() {
     supabase.auth.getSession().then(({ data }) => { setSession(data.session); setAuthReady(true); });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       setSession(nextSession);
-      if (nextSession?.user) setTimeout(() => syncProfile(nextSession.user).catch(() => {}), 0);
+      if (nextSession?.user) setTimeout(() => syncProfile(nextSession.user).catch(() => { }), 0);
     });
     return () => subscription.unsubscribe();
   }, []);
@@ -74,35 +74,107 @@ export default function App() {
     return '';
   };
 
+
   const handleGoogle = async () => {
-    // Let Expo choose the URL for the current runtime: web origin, exp:// in Expo Go,
-    // and the configured sigap:// scheme in a development/production build.
-    const redirectTo = Platform.OS === 'web' ? `${window.location.origin}/auth/callback` : ExpoLinking.createURL('auth/callback');
-    const { data, error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo, skipBrowserRedirect: true } });
-    if (error) throw error;
-    const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
-    if (result.type !== 'success') return '';
-    const callbackUrl = new URL(result.url);
-    // Supabase can return a PKCE code in the query string, or tokens/errors in the fragment.
-    // Mobile deep links may also place the PKCE code in the fragment.
-    const fragment = new URLSearchParams(callbackUrl.hash.replace(/^#/, ''));
-    const query = callbackUrl.searchParams;
-    const oauthError = query.get('error_description') || query.get('error') || fragment.get('error_description') || fragment.get('error');
-    if (oauthError) throw new Error(oauthError);
-    const code = query.get('code') || fragment.get('code');
-    const access_token = fragment.get('access_token') || query.get('access_token');
-    const refresh_token = fragment.get('refresh_token') || query.get('refresh_token');
-    if (!code && (!access_token || !refresh_token)) {
-      const received = [...query.keys(), ...fragment.keys()].join(', ') || 'tidak ada parameter';
-      throw new Error(`Callback Google diterima tanpa kredensial login (${received}). Periksa Redirect URLs di Supabase dan pastikan ${redirectTo} tercantum persis.`);
+    try {
+      if (!supabase) {
+        throw new Error('Supabase belum dikonfigurasi.');
+      }
+
+      const redirectTo =
+        Platform.OS === 'web'
+          ? `${window.location.origin}/auth/callback`
+          : ExpoLinking.createURL('auth/callback');
+
+      console.log('[OAuth] Redirect URL:', redirectTo);
+
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo,
+          skipBrowserRedirect: true,
+        },
+      });
+
+      if (error) throw error;
+
+      console.log('[OAuth] Opening browser...');
+
+      const result = await WebBrowser.openAuthSessionAsync(
+        data.url,
+        redirectTo
+      );
+
+      console.log('[OAuth] Browser result:', result.type);
+
+      if (result.type !== 'success' || !result.url) {
+        throw new Error(
+          `Login Google tidak selesai. Browser result: ${result.type}`
+        );
+      }
+
+      const callbackUrl = new URL(result.url);
+
+      const fragment = new URLSearchParams(
+        callbackUrl.hash.replace(/^#/, '')
+      );
+
+      const query = callbackUrl.searchParams;
+
+      const oauthError =
+        query.get('error_description') ||
+        query.get('error') ||
+        fragment.get('error_description') ||
+        fragment.get('error');
+
+      if (oauthError) throw new Error(oauthError);
+
+      const code = query.get('code') || fragment.get('code');
+
+      const access_token =
+        fragment.get('access_token') ||
+        query.get('access_token');
+
+      const refresh_token =
+        fragment.get('refresh_token') ||
+        query.get('refresh_token');
+
+      console.log('[OAuth] Callback received:', {
+        hasCode: !!code,
+        hasAccessToken: !!access_token,
+        hasRefreshToken: !!refresh_token,
+        queryKeys: [...query.keys()],
+        fragmentKeys: [...fragment.keys()],
+      });
+
+      if (!code && (!access_token || !refresh_token)) {
+        throw new Error(
+          `Callback tidak memiliki kredensial login. Redirect: ${redirectTo}`
+        );
+      }
+
+      const { data: sessionData, error: sessionError } = code
+        ? await supabase.auth.exchangeCodeForSession(code)
+        : await supabase.auth.setSession({
+          access_token,
+          refresh_token,
+        });
+
+      if (sessionError) throw sessionError;
+
+      console.log('[OAuth] Session created:', !!sessionData.session);
+
+      if (sessionData.user) {
+        await syncProfile(sessionData.user);
+      }
+
+      return '';
+    } catch (error) {
+      console.error('[OAuth] Login failed:', error);
+      throw error;
     }
-    const { data: sessionData, error: sessionError } = code
-      ? await supabase.auth.exchangeCodeForSession(code)
-      : await supabase.auth.setSession({ access_token, refresh_token });
-    if (sessionError) throw sessionError;
-    await syncProfile(sessionData.user);
-    return '';
   };
+
 
   if (!authReady) return <View style={styles.app} />;
   if (!session) return <View style={styles.app}><StatusBar barStyle="dark-content" backgroundColor={C.paper} /><AuthScreen onSubmit={handleAuth} onGoogle={handleGoogle} configured={isSupabaseConfigured} /></View>;
@@ -110,7 +182,7 @@ export default function App() {
   const navigate = id => { setSelected(null); setTab(id); };
   const chooseReport = report => setSelected(report.id);
   const openNews = article => {
-    if (article?.url) Linking.openURL(article.url).catch(() => {});
+    if (article?.url) Linking.openURL(article.url).catch(() => { });
     else navigate('news');
   };
   const createReport = draft => {

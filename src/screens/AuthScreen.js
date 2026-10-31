@@ -22,12 +22,25 @@ export default function AuthScreen({ onSubmit, onGoogle, configured }) {
     finally { setBusy(false); }
   };
   const google = async () => {
-    setError(''); setInfo('');
-    if (!configured) return setError('Koneksi Supabase belum dikonfigurasi.');
+    setError('');
+    setInfo('');
+
+    if (!configured) {
+      return setError('Koneksi Supabase belum dikonfigurasi.');
+    }
+
     setBusy(true);
-    try { const message = await onGoogle(); if (message) setError(message); }
-    catch (e) { setError(e.message || 'Login Google gagal. Coba lagi.'); }
-    finally { setBusy(false); }
+
+    try {
+      const message = await onGoogle();
+
+      if (message) setError(message);
+    } catch (e) {
+      console.error('[AuthScreen] Google login error:', e);
+      setError(e.message || 'Login Google gagal. Coba lagi.');
+    } finally {
+      setBusy(false);
+    }
   };
 
   return <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>

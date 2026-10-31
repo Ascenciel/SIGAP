@@ -6,8 +6,8 @@
   "scripts": {
     "start": "expo start",
     "start:dev-client": "expo start --dev-client",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
     "web": "expo start --web",
     "eas:init": "npx eas-cli init",
     "build:dev:android": "npx eas-cli build --platform android --profile development",
@@ -29,6 +29,7 @@
     "react-native": "0.88.1",
     "react-native-maps": "1.29.11",
     "react-native-url-polyfill": "^2.0.0",
-    "react-native-web": "^0.21.4"
+    "react-native-web": "^0.21.4",
+    "react-native-webview": "14.0.1"
   }
 }
