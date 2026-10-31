@@ -13,11 +13,9 @@
         {
           "locationWhenInUsePermission": "Izinkan SIGAP memakai lokasi Anda untuk menampilkan posisi di peta."
         }
-      ]
+      ],
+      "expo-web-browser"
     ],
-    "splash": {
-      "backgroundColor": "#F4F7F6"
-    },
     "ios": {
       "bundleIdentifier": "com.tripleT.sigap",
       "supportsTablet": true,
