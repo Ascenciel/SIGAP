@@ -20,7 +20,7 @@ function DetailScreen({ report, onBack, isModerator, onStatus }) {
     <Pressable onPress={onBack} style={styles.backButton}><Text style={styles.backText}>‹  Kembali</Text></Pressable>
     <Text style={styles.eyebrow}>{report.id}  ·  {report.category.toUpperCase()}</Text><Text style={styles.detailTitle}>{report.title}</Text>
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 12 }}><Badge status={report.status} /><Text style={styles.metaText}>{report.time}</Text></View>
-    <View style={styles.detailMap}><MapPreview reports={[report]} onReport={() => {}} /><View style={styles.detailLocation}><Text style={{ color: C.green }}>⌖</Text><Text style={styles.detailPlace}>{report.place}</Text></View></View>
+    <View style={styles.detailMap}><MapPreview reports={report.status === 'Ditolak' ? [] : [report]} onReport={() => {}} /><View style={styles.detailLocation}><Text style={{ color: C.green }}>⌖</Text><Text style={styles.detailPlace}>{report.place}</Text></View></View>
     <Text style={styles.sectionHeading}>Keterangan laporan</Text><Text style={styles.detailDescription}>{report.description}</Text>
     <View style={styles.infoRow}><Text style={styles.infoLabel}>SUMBER</Text><Text style={styles.infoValue}>{report.source}</Text></View>
     <View style={styles.infoRow}><Text style={styles.infoLabel}>DIPERBARUI</Text><Text style={styles.infoValue}>{report.updated || report.time}</Text></View>

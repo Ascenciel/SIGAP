@@ -19,7 +19,7 @@ function MapPreview({
   selectedLocation,
   onLocationSelect,
 }) {
-  const coordinates = reports.filter(
+  const coordinates = reports.filter(report => report.status !== 'Ditolak').filter(
     report =>
       Number.isFinite(Number(report.latitude)) &&
       Number.isFinite(Number(report.longitude))

@@ -10,7 +10,8 @@ import MapPreview from '../components/MapPreview';
 function MapScreen({ reports, onSelect }) {
   const [filter, setFilter] = useState('Semua');
   const [userLocation, setUserLocation] = useState(null);
-  const filtered = filter === 'Semua' ? reports : reports.filter(r => r.category === filter);
+  const visibleReports = reports.filter(r => r.status !== 'Ditolak');
+  const filtered = filter === 'Semua' ? visibleReports : visibleReports.filter(r => r.category === filter);
   const showMyLocation = async () => {
     try {
       const permission = await Location.requestForegroundPermissionsAsync();

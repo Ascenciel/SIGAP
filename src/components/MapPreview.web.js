@@ -6,7 +6,7 @@ import { STATUS } from '../data/reports';
 
 function MapPreview({ reports = [], onReport, height = 175, userLocation, selectable = false, selectedLocation, onLocationSelect }) {
   const mapDocument = useMemo(() => {
-    const points = reports.filter(report => Number.isFinite(Number(report.latitude)) && Number.isFinite(Number(report.longitude))).map(report => ({
+    const points = reports.filter(report => report.status !== 'Ditolak' && Number.isFinite(Number(report.latitude)) && Number.isFinite(Number(report.longitude))).map(report => ({
       id: report.id,
       latitude: Number(report.latitude),
       longitude: Number(report.longitude),
