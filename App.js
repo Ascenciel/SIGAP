@@ -1,3 +1,4 @@
+import 'expo-dev-client';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Linking, Platform, Pressable, StatusBar, Text, View } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
@@ -74,7 +75,9 @@ export default function App() {
   };
 
   const handleGoogle = async () => {
-    const redirectTo = Platform.OS === 'web' ? `${window.location.origin}/auth/callback` : ExpoLinking.createURL('auth/callback', { scheme: 'sigap' });
+    // Let Expo choose the URL for the current runtime: web origin, exp:// in Expo Go,
+    // and the configured sigap:// scheme in a development/production build.
+    const redirectTo = Platform.OS === 'web' ? `${window.location.origin}/auth/callback` : ExpoLinking.createURL('auth/callback');
     const { data, error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo, skipBrowserRedirect: true } });
     if (error) throw error;
     const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);

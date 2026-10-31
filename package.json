@@ -5,22 +5,28 @@
   "main": "node_modules/expo/AppEntry.js",
   "scripts": {
     "start": "expo start",
+    "start:dev-client": "expo start --dev-client",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "eas:init": "npx eas-cli init",
+    "build:dev:android": "npx eas-cli build --platform android --profile development",
+    "build:preview:android": "npx eas-cli build --platform android --profile preview",
+    "build:production:android": "npx eas-cli build --platform android --profile production"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "^2.2.0",
     "@supabase/supabase-js": "^2.57.0",
     "expo": "~58.0.0",
-    "expo-location": "~58.0.20",
+    "expo-dev-client": "~58.0.18",
     "expo-linking": "~8.0.0",
+    "expo-location": "~58.0.20",
     "expo-web-browser": "~15.0.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "react-native": "0.88.1",
     "react-native-maps": "1.29.11",
-    "react-native-web": "^0.21.4",
-    "react-native-url-polyfill": "^2.0.0"
+    "react-native-url-polyfill": "^2.0.0",
+    "react-native-web": "^0.21.4"
   }
 }

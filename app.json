@@ -1,6 +1,7 @@
 {
   "expo": {
     "name": "SIGAP",
+    "owner": "sulthansyarif",
     "slug": "sigap-mobile",
     "scheme": "sigap",
     "version": "1.0.0",
@@ -18,11 +19,25 @@
       "backgroundColor": "#F4F7F6"
     },
     "ios": {
-      "supportsTablet": true
+      "bundleIdentifier": "com.tripleT.sigap",
+      "supportsTablet": true,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
+      "package": "com.tripleT.sigap",
       "adaptiveIcon": {
         "backgroundColor": "#F4F7F6"
+      },
+      "permissions": [
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ]
+    },
+    "extra": {
+      "eas": {
+        "projectId": "f4023bb9-46c4-4cca-8482-8d232da7c66e"
       }
     }
   }
