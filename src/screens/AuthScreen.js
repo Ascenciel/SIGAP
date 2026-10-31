@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import C from '../theme/colors';
 
 export default function AuthScreen({ onSubmit, onGoogle, configured }) {
@@ -13,27 +13,28 @@ export default function AuthScreen({ onSubmit, onGoogle, configured }) {
   const signup = mode === 'signup';
 
   const submit = async () => {
-    setError(''); setInfo('');
+    setError('');
+    setInfo('');
     if (!configured) return setError('Koneksi Supabase belum dikonfigurasi. Isi EXPO_PUBLIC_SUPABASE_URL dan EXPO_PUBLIC_SUPABASE_ANON_KEY.');
     if (!email.trim() || password.length < 6 || (signup && !name.trim())) return setError('Isi semua kolom. Kata sandi minimal 6 karakter.');
     setBusy(true);
-    try { const message = await onSubmit({ mode, name: name.trim(), email: email.trim(), password }); if (message) setInfo(message); }
-    catch (e) { setError(e.message || 'Terjadi kesalahan. Coba lagi.'); }
-    finally { setBusy(false); }
+    try {
+      const message = await onSubmit({ mode, name: name.trim(), email: email.trim(), password });
+      if (message) setInfo(message);
+    } catch (e) {
+      setError(e.message || 'Terjadi kesalahan. Coba lagi.');
+    } finally {
+      setBusy(false);
+    }
   };
+
   const google = async () => {
     setError('');
     setInfo('');
-
-    if (!configured) {
-      return setError('Koneksi Supabase belum dikonfigurasi.');
-    }
-
+    if (!configured) return setError('Koneksi Supabase belum dikonfigurasi.');
     setBusy(true);
-
     try {
       const message = await onGoogle();
-
       if (message) setError(message);
     } catch (e) {
       console.error('[AuthScreen] Google login error:', e);
@@ -43,27 +44,90 @@ export default function AuthScreen({ onSubmit, onGoogle, configured }) {
     }
   };
 
-  return <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-    <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 24 }} keyboardShouldPersistTaps="handled">
-      <View style={{ alignSelf: 'center', width: '100%', maxWidth: 430 }}>
-        <View style={{ width: 54, height: 54, borderRadius: 18, backgroundColor: C.green, alignItems: 'center', justifyContent: 'center', marginBottom: 22 }}><Text style={{ color: C.white, fontSize: 29, fontWeight: '900', fontStyle: 'italic' }}>S</Text></View>
-        <Text style={{ color: C.green, fontSize: 10, fontWeight: '900', letterSpacing: 1.5 }}>SIGAP · INFORMASI KOMUNITAS</Text>
-        <Text style={{ color: C.ink, fontSize: 29, lineHeight: 36, fontWeight: '800', marginTop: 9 }}>{signup ? 'Bergabung bersama warga' : 'Selamat datang kembali'}</Text>
-        <Text style={{ color: C.muted, fontSize: 13, lineHeight: 20, marginTop: 7, marginBottom: 25 }}>{signup ? 'Buat akun untuk melaporkan kondisi dan membantu komunitas.' : 'Masuk untuk melihat informasi dan berkoordinasi dengan komunitas.'}</Text>
-        {signup ? <Field label="Nama lengkap" value={name} onChangeText={setName} placeholder="Nama Anda" /> : null}
-        <Field label="Email" value={email} onChangeText={setEmail} placeholder="nama@email.com" keyboardType="email-address" autoCapitalize="none" />
-        <Field label="Kata sandi" value={password} onChangeText={setPassword} placeholder="Minimal 6 karakter" secureTextEntry />
-        {error ? <Text accessibilityRole="alert" style={{ color: '#B33D35', fontSize: 12, lineHeight: 18, marginTop: 13 }}>{error}</Text> : null}
-        {info ? <Text style={{ color: C.green, fontSize: 12, lineHeight: 18, marginTop: 13 }}>{info}</Text> : null}
-        <Pressable disabled={busy} onPress={submit} style={{ height: 50, borderRadius: 13, backgroundColor: C.green, alignItems: 'center', justifyContent: 'center', marginTop: 20 }}>{busy ? <ActivityIndicator color={C.white} /> : <Text style={{ color: C.white, fontWeight: '800', fontSize: 13 }}>{signup ? 'Buat akun' : 'Masuk'}</Text>}</Pressable>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 18 }}><View style={{ flex: 1, height: 1, backgroundColor: C.line }} /><Text style={{ color: C.muted, fontSize: 11 }}>atau</Text><View style={{ flex: 1, height: 1, backgroundColor: C.line }} /></View>
-        <Pressable disabled={busy} onPress={google} style={{ height: 49, borderRadius: 13, backgroundColor: C.white, borderWidth: 1, borderColor: C.line, alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: C.ink, fontWeight: '700', fontSize: 12 }}>G  Lanjutkan dengan Google</Text></Pressable>
-        <Pressable onPress={() => { setMode(signup ? 'login' : 'signup'); setError(''); setInfo(''); }} style={{ padding: 16, alignItems: 'center' }}><Text style={{ color: C.muted, fontSize: 12 }}>{signup ? 'Sudah punya akun? ' : 'Belum punya akun? '}<Text style={{ color: C.green, fontWeight: '800' }}>{signup ? 'Masuk' : 'Daftar'}</Text></Text></Pressable>
+  const changeMode = () => {
+    setMode(signup ? 'login' : 'signup');
+    setError('');
+    setInfo('');
+  };
+
+  return <KeyboardAvoidingView style={authStyles.keyboard} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <ScrollView contentContainerStyle={authStyles.scrollContent} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+      <View style={authStyles.container}>
+        <View style={authStyles.brandLockup}>
+          <Image source={require('../../assets/sigap-logo.png')} resizeMode="contain" style={authStyles.brandLogo} accessibilityLabel="Logo SIGAP" />
+        </View>
+
+        <View style={authStyles.intro}>
+          <Text style={authStyles.eyebrow}>{signup ? 'GABUNG BERSAMA KOMUNITAS' : 'AKSES INFORMASI KOMUNITAS'}</Text>
+          <Text style={authStyles.title}>{signup ? 'Buat akun warga' : 'Selamat datang kembali'}</Text>
+          <Text style={authStyles.subtitle}>{signup ? 'Laporkan kondisi sekitar dan bantu warga tetap terhubung.' : 'Masuk untuk memantau informasi dan berkoordinasi dengan warga.'}</Text>
+        </View>
+
+        <View style={authStyles.formCard}>
+          {signup ? <Field label="Nama lengkap" value={name} onChangeText={setName} placeholder="Nama Anda" autoCapitalize="words" returnKeyType="next" /> : null}
+          <Field label="Email" value={email} onChangeText={setEmail} placeholder="nama@email.com" keyboardType="email-address" autoCapitalize="none" autoCorrect={false} textContentType="emailAddress" returnKeyType="next" />
+          <Field label="Kata sandi" value={password} onChangeText={setPassword} placeholder="Minimal 6 karakter" secureTextEntry textContentType={signup ? 'newPassword' : 'password'} returnKeyType="done" onSubmitEditing={submit} />
+
+          {error ? <Text accessibilityRole="alert" style={authStyles.error}>{error}</Text> : null}
+          {info ? <Text style={authStyles.info}>{info}</Text> : null}
+
+          <Pressable accessibilityRole="button" disabled={busy} onPress={submit} style={({ pressed }) => [authStyles.primaryButton, pressed && !busy && authStyles.buttonPressed, busy && authStyles.buttonDisabled]}>
+            {busy ? <ActivityIndicator color={C.white} /> : <Text style={authStyles.primaryButtonText}>{signup ? 'Buat akun' : 'Masuk'}</Text>}
+          </Pressable>
+
+          <View style={authStyles.separator}><View style={authStyles.separatorLine} /><Text style={authStyles.separatorText}>atau lanjutkan dengan</Text><View style={authStyles.separatorLine} /></View>
+
+          <Pressable accessibilityRole="button" disabled={busy} onPress={google} style={({ pressed }) => [authStyles.googleButton, pressed && !busy && authStyles.buttonPressed, busy && authStyles.buttonDisabled]}>
+            <Text style={authStyles.googleMark}>G</Text><Text style={authStyles.googleButtonText}>Google</Text>
+          </Pressable>
+        </View>
+
+        <Pressable accessibilityRole="button" disabled={busy} onPress={changeMode} style={authStyles.modeSwitch}>
+          <Text style={authStyles.modeSwitchText}>{signup ? 'Sudah punya akun? ' : 'Belum punya akun? '}<Text style={authStyles.modeSwitchAction}>{signup ? 'Masuk' : 'Daftar'}</Text></Text>
+        </Pressable>
+        <Text style={authStyles.footer}>Sistem Informasi dan Gerak Aksi Penanggulangan Bencana</Text>
       </View>
     </ScrollView>
   </KeyboardAvoidingView>;
 }
 
 function Field({ label, ...props }) {
-  return <View style={{ marginTop: 11 }}><Text style={{ color: C.ink, fontSize: 11, fontWeight: '800', marginBottom: 7 }}>{label}</Text><TextInput {...props} placeholderTextColor="#9AA6A1" style={{ height: 48, borderRadius: 11, backgroundColor: C.white, borderWidth: 1, borderColor: C.line, paddingHorizontal: 13, color: C.ink, fontSize: 13 }} /></View>;
+  const [focused, setFocused] = useState(false);
+  return <View style={authStyles.field}>
+    <Text style={authStyles.fieldLabel}>{label}</Text>
+    <TextInput {...props} onFocus={event => { setFocused(true); props.onFocus?.(event); }} onBlur={event => { setFocused(false); props.onBlur?.(event); }} placeholderTextColor="#98A7A2" style={[authStyles.input, focused && authStyles.inputFocused]} />
+  </View>;
 }
+
+const authStyles = StyleSheet.create({
+  keyboard: { flex: 1 },
+  scrollContent: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 22, paddingVertical: 26 },
+  container: { alignSelf: 'center', width: '100%', maxWidth: 430 },
+  brandLockup: { alignItems: 'center', marginBottom: 13 },
+  brandLogo: { width: 142, height: 157 },
+  intro: { alignItems: 'center', marginBottom: 18 },
+  eyebrow: { color: C.green, fontSize: 9, fontWeight: '900', letterSpacing: 1.2, marginBottom: 8, textAlign: 'center' },
+  title: { color: C.ink, fontSize: 27, lineHeight: 33, fontWeight: '900', letterSpacing: -0.5, textAlign: 'center' },
+  subtitle: { color: C.muted, fontSize: 12, lineHeight: 18, marginTop: 7, maxWidth: 360, textAlign: 'center' },
+  formCard: { backgroundColor: C.white, borderWidth: 1, borderColor: C.line, borderRadius: 20, padding: 18 },
+  field: { marginTop: 10 },
+  fieldLabel: { color: C.ink, fontSize: 11, fontWeight: '800', marginBottom: 7 },
+  input: { height: 48, borderRadius: 11, backgroundColor: '#FBFCFB', borderWidth: 1, borderColor: C.line, paddingHorizontal: 13, color: C.ink, fontSize: 13 },
+  inputFocused: { borderColor: '#68AA98', backgroundColor: C.white },
+  error: { color: '#B33D35', fontSize: 11, lineHeight: 16, marginTop: 12 },
+  info: { color: C.green, fontSize: 11, lineHeight: 16, marginTop: 12 },
+  primaryButton: { height: 49, borderRadius: 12, backgroundColor: C.green, alignItems: 'center', justifyContent: 'center', marginTop: 17 },
+  primaryButtonText: { color: C.white, fontWeight: '800', fontSize: 13 },
+  buttonPressed: { opacity: 0.85 },
+  buttonDisabled: { opacity: 0.65 },
+  separator: { flexDirection: 'row', alignItems: 'center', gap: 10, marginVertical: 17 },
+  separatorLine: { flex: 1, height: 1, backgroundColor: C.line },
+  separatorText: { color: C.muted, fontSize: 10 },
+  googleButton: { height: 47, borderRadius: 12, backgroundColor: C.white, borderWidth: 1, borderColor: C.line, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 9 },
+  googleMark: { color: '#4285F4', fontSize: 15, fontWeight: '900' },
+  googleButtonText: { color: C.ink, fontWeight: '700', fontSize: 12 },
+  modeSwitch: { padding: 15, alignItems: 'center' },
+  modeSwitchText: { color: C.muted, fontSize: 11 },
+  modeSwitchAction: { color: C.green, fontWeight: '900' },
+  footer: { color: '#8A9691', fontSize: 8, textAlign: 'center', lineHeight: 12, marginTop: 1 },
+});

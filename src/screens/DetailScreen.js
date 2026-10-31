@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Alert, ScrollView, Pressable, Text, TextInput, View } from 'react-native';
+import { Alert, Image, ScrollView, Pressable, Text, TextInput, View } from 'react-native';
 import C from '../theme/colors';
 import styles from '../theme/styles';
 import { STATUS, REVIEW_STATES } from '../data/reports';
@@ -22,6 +22,7 @@ function DetailScreen({ report, onBack, isModerator, onStatus }) {
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 12 }}><Badge status={report.status} /><Text style={styles.metaText}>{report.time}</Text></View>
     <View style={styles.detailMap}><MapPreview reports={report.status === 'Ditolak' ? [] : [report]} onReport={() => {}} /><View style={styles.detailLocation}><Text style={{ color: C.green }}>⌖</Text><Text style={styles.detailPlace}>{report.place}</Text></View></View>
     <Text style={styles.sectionHeading}>Keterangan laporan</Text><Text style={styles.detailDescription}>{report.description}</Text>
+    {report.photoUri ? <View style={styles.detailPhoto}><Text style={styles.infoLabel}>FOTO PENDUKUNG</Text><Image source={{ uri: report.photoUri }} style={styles.detailPhotoImage} resizeMode="cover" accessibilityLabel="Foto pendukung laporan" /></View> : null}
     <View style={styles.infoRow}><Text style={styles.infoLabel}>SUMBER</Text><Text style={styles.infoValue}>{report.source}</Text></View>
     <View style={styles.infoRow}><Text style={styles.infoLabel}>DIPERBARUI</Text><Text style={styles.infoValue}>{report.updated || report.time}</Text></View>
     <View style={styles.noteBox}><Text style={styles.noteTitle}>Catatan pemeriksaan</Text><Text style={styles.noteText}>{report.note || 'Belum ada catatan pemeriksaan.'}</Text></View>

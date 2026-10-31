@@ -1,6 +1,6 @@
 import 'expo-dev-client';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Image, Linking, Platform, Pressable, SafeAreaView, StatusBar, Text, View } from 'react-native';
+import { Alert, Image, Linking, Modal, Platform, Pressable, SafeAreaView, StatusBar, Text, View } from 'react-native';
 import * as Location from 'expo-location';
 import * as WebBrowser from 'expo-web-browser';
 import * as ExpoLinking from 'expo-linking';
@@ -39,6 +39,7 @@ export default function App() {
   const [displayName, setDisplayName] = useState('');
   const [weatherLocation, setWeatherLocation] = useState(null);
   const [weatherLocationLoading, setWeatherLocationLoading] = useState(false);
+  const [locationConsentVisible, setLocationConsentVisible] = useState(false);
   const [reports, setReports] = useState(SEED);
   const [selected, setSelected] = useState(null);
   const [toast, setToast] = useState('');
@@ -89,6 +90,12 @@ export default function App() {
       if (nextSession?.user) setTimeout(() => {
         syncProfile(nextSession.user).then(() => loadProfileRole(nextSession.user)).catch(() => { });
       }, 0);
+      if (_event === 'SIGNED_IN' && nextSession?.user) setTimeout(async () => {
+        try {
+          const permission = await Location.getForegroundPermissionsAsync();
+          if (!permission.granted) setLocationConsentVisible(true);
+        } catch { setLocationConsentVisible(true); }
+      }, 250);
     });
     return () => subscription.unsubscribe();
   }, []);
@@ -311,5 +318,16 @@ export default function App() {
       </Pressable>)}
     </View> : null}
     {isModerator && !selectedReport ? <View style={styles.tabBar}><Pressable onPress={() => setIsModerator(false)} style={styles.exitMode}><Text style={styles.exitModeIcon}>‹</Text><Text style={styles.exitModeText}>Kembali ke tampilan warga</Text></Pressable></View> : null}
+    <Modal transparent visible={locationConsentVisible} animationType="fade" onRequestClose={() => setLocationConsentVisible(false)}>
+      <View style={styles.locationConsentBackdrop}>
+        <View style={styles.locationConsentCard}>
+          <View style={styles.locationConsentIcon}><Text style={styles.locationConsentGlyph}>⌖</Text></View>
+          <Text style={styles.locationConsentTitle}>Aktifkan akses lokasi?</Text>
+          <Text style={styles.locationConsentBody}>Lokasi dipakai untuk menandai posisi Anda di peta dan menampilkan cuaca sekitar. Anda bisa memilih Nanti dan mengaktifkannya kapan saja.</Text>
+          <Pressable onPress={async () => { setLocationConsentVisible(false); await chooseWeatherLocation(); }} style={styles.locationConsentPrimary}><Text style={styles.locationConsentPrimaryText}>Izinkan lokasi</Text></Pressable>
+          <Pressable onPress={() => setLocationConsentVisible(false)} style={styles.locationConsentSecondary}><Text style={styles.locationConsentSecondaryText}>Nanti</Text></Pressable>
+        </View>
+      </View>
+    </Modal>
   </SafeAreaView>;
 }

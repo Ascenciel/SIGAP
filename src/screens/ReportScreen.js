@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView, Pressable, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Platform, ScrollView, Pressable, Text, TextInput, View } from 'react-native';
 import * as Location from 'expo-location';
 import styles from '../theme/styles';
 import C from '../theme/colors';
@@ -13,7 +13,8 @@ function ReportScreen({ onSubmit, onNavigate }) {
   const [category, setCategory] = useState('Banjir');
   const [place, setPlace] = useState('');
   const [description, setDescription] = useState('');
-  const [photoAdded, setPhotoAdded] = useState(false);
+  const [photo, setPhoto] = useState(null);
+  const [photoBusy, setPhotoBusy] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState(null);
   const [mapInitialLocation, setMapInitialLocation] = useState(null);
   const [locationMessage, setLocationMessage] = useState('Ketuk peta untuk menandai lokasi kejadian.');
@@ -69,6 +70,38 @@ function ReportScreen({ onSubmit, onNavigate }) {
     }
   };
 
+  const pickPhoto = async source => {
+    setPhotoBusy(true);
+    try {
+      const ImagePicker = await import('expo-image-picker');
+      if (source === 'camera') {
+        const permission = await ImagePicker.requestCameraPermissionsAsync();
+        if (!permission.granted) {
+          Alert.alert('Izin kamera diperlukan', 'Izinkan akses kamera untuk mengambil foto pendukung.');
+          return;
+        }
+      }
+      const options = { mediaTypes: ['images'], allowsEditing: false, quality: 0.75, exif: false };
+      const result = source === 'camera'
+        ? await ImagePicker.launchCameraAsync(options)
+        : await ImagePicker.launchImageLibraryAsync(options);
+      if (!result.canceled && result.assets?.[0]) {
+        const asset = result.assets[0];
+        setPhoto({ uri: asset.uri, fileName: asset.fileName || 'Foto pendukung', fileSize: asset.fileSize || null });
+      }
+    } catch (error) {
+      const missingNativeModule = error?.message?.includes('ExpoImagePicker');
+      Alert.alert(
+        missingNativeModule ? 'Perlu memasang ulang aplikasi' : 'Foto tidak dapat dibuka',
+        missingNativeModule
+          ? 'Aplikasi yang terpasang belum menyertakan modul kamera dan galeri. Buat lalu pasang development build terbaru untuk memakai fitur foto.'
+          : error?.message || 'Coba ambil foto lain atau pilih dari galeri.'
+      );
+    } finally {
+      setPhotoBusy(false);
+    }
+  };
+
   const submit = () => {
     if (!place.trim() || !description.trim()) {
       Alert.alert('Lengkapi laporan', 'Pilih titik pada peta atau isi lokasi, lalu tulis deskripsi laporan.');
@@ -78,7 +111,7 @@ function ReportScreen({ onSubmit, onNavigate }) {
       Alert.alert('Tunggu sebentar', 'Alamat lokasi masih dicari.');
       return;
     }
-    onSubmit({ category, place: place.trim(), description: description.trim(), latitude: selectedLocation?.latitude, longitude: selectedLocation?.longitude });
+    onSubmit({ category, place: place.trim(), description: description.trim(), latitude: selectedLocation?.latitude, longitude: selectedLocation?.longitude, photoUri: photo?.uri || null });
     Alert.alert('Laporan terkirim', 'Laporan disimpan dengan status Menunggu verifikasi.', [{ text: 'Lihat laporan', onPress: () => onNavigate('map') }]);
   };
 
@@ -110,8 +143,19 @@ function ReportScreen({ onSubmit, onNavigate }) {
       <FieldLabel>Deskripsi</FieldLabel>
       <TextInput multiline value={description} onChangeText={setDescription} placeholder="Jelaskan kondisi yang kamu lihat dengan singkat dan faktual…" placeholderTextColor="#9AA6A2" textAlignVertical="top" style={[styles.input, styles.textArea]} />
       <Text style={styles.helperText}>Tuliskan yang kamu lihat. Jangan menyimpulkan area aman atau memberi arahan darurat.</Text>
+
       <FieldLabel optional="OPSIONAL">Foto pendukung</FieldLabel>
-      <Pressable onPress={() => setPhotoAdded(!photoAdded)} style={styles.uploadBox}><Text style={styles.uploadIcon}>{photoAdded ? '✓' : '＋'}</Text><Text style={styles.uploadText}>{photoAdded ? 'Foto ditambahkan (simulasi)' : 'Tambahkan foto'}</Text><Text style={styles.uploadSub}>{photoAdded ? 'Ketuk untuk menghapus' : 'Fitur foto tersedia setelah integrasi kamera'}</Text></Pressable>
+      {photo ? <View style={styles.photoPreviewCard}>
+        <Image source={{ uri: photo.uri }} style={styles.photoPreviewImage} resizeMode="cover" accessibilityLabel="Pratinjau foto pendukung" />
+        <View style={styles.photoPreviewFooter}>
+          <View style={{ flex: 1 }}><Text style={styles.uploadText} numberOfLines={1}>{photo.fileName}</Text><Text style={styles.uploadSub}>{photo.fileSize ? `${(photo.fileSize / (1024 * 1024)).toFixed(1)} MB` : 'Foto siap dilampirkan'}</Text></View>
+          <Pressable accessibilityRole="button" onPress={() => setPhoto(null)} style={styles.photoRemoveButton}><Text style={styles.photoRemoveText}>Hapus</Text></Pressable>
+        </View>
+      </View> : <View style={styles.photoActions}>
+        <Pressable accessibilityRole="button" disabled={photoBusy} onPress={() => pickPhoto('camera')} style={[styles.photoSourceButton, photoBusy && { opacity: 0.6 }]}><Text style={styles.photoSourceIcon}>◉</Text><Text style={styles.photoSourceText}>{photoBusy ? 'Membuka…' : 'Ambil foto'}</Text></Pressable>
+        <Pressable accessibilityRole="button" disabled={photoBusy} onPress={() => pickPhoto('library')} style={[styles.photoSourceButton, photoBusy && { opacity: 0.6 }]}><Text style={styles.photoSourceIcon}>▧</Text><Text style={styles.photoSourceText}>Pilih dari galeri</Text></Pressable>
+      </View>}
+
       <Pressable disabled={resolvingAddress} onPress={submit} style={[styles.primaryButton, resolvingAddress && { opacity: 0.65 }]}><Text style={styles.primaryButtonText}>Kirim laporan  →</Text></Pressable>
       <Text style={styles.consentText}>Dengan mengirim laporan, kamu memahami bahwa informasi akan ditampilkan sebagai laporan komunitas dan perlu diperiksa.</Text>
     </ScrollView>
