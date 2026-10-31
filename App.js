@@ -1,11 +1,15 @@
 import 'expo-dev-client';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Linking, Platform, Pressable, StatusBar, Text, View } from 'react-native';
+import { Alert, Linking, Platform, Pressable, StatusBar, Text, View } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import * as ExpoLinking from 'expo-linking';
 import C from './src/theme/colors';
 import styles from './src/theme/styles';
-import { SEED } from './src/data/reports';
+import {
+  fetchReports,
+  createReport as saveReport,
+  updateReportStatus,
+} from './src/services/reportService';
 import useRemoteData from './src/hooks/useRemoteData';
 import { fetchWeather } from './src/services/weatherApi';
 import { fetchNews } from './src/services/newsApi';
@@ -34,7 +38,8 @@ export default function App() {
   const [authReady, setAuthReady] = useState(false);
   const [tab, setTab] = useState('home');
   const [isModerator, setIsModerator] = useState(false);
-  const [reports, setReports] = useState(SEED);
+  const [reports, setReports] = useState([]);
+  const [reportsLoading, setReportsLoading] = useState(false);
   const [selected, setSelected] = useState(null);
   const [toast, setToast] = useState('');
   const weather = useRemoteData(fetchWeather);
@@ -50,6 +55,43 @@ export default function App() {
     });
     return () => subscription.unsubscribe();
   }, []);
+  useEffect(() => {
+    if (!session?.user) {
+      setReports([]);
+      return;
+    }
+
+    let active = true;
+
+    const loadReports = async () => {
+      try {
+        setReportsLoading(true);
+
+        const data = await fetchReports();
+
+        if (active) {
+          setReports(data);
+        }
+      } catch (error) {
+        console.error('[Reports] Failed to load:', error);
+
+        if (active) {
+          Alert.alert(
+            'Gagal memuat laporan',
+            error.message || 'Terjadi kesalahan saat mengambil laporan.'
+          );
+        }
+      } finally {
+        if (active) setReportsLoading(false);
+      }
+    };
+
+    loadReports();
+
+    return () => {
+      active = false;
+    };
+  }, [session?.user?.id]);
 
   const syncProfile = async user => {
     if (!supabase || !user) return;
@@ -185,35 +227,48 @@ export default function App() {
     if (article?.url) Linking.openURL(article.url).catch(() => { });
     else navigate('news');
   };
-  const createReport = draft => {
-    const report = {
-      id: `SG-${String(2409 + reports.length - SEED.length).padStart(4, '0')}`,
-      ...draft,
-      title: `${draft.category} dilaporkan di ${draft.place}`,
-      time: 'Baru saja',
-      updated: 'Baru saja',
-      status: 'Menunggu verifikasi',
-      source: 'Laporan warga · belum diperiksa',
-      note: '', latitude: -7.2756, longitude: 112.6426,
-    };
-    setReports(previous => [report, ...previous]);
+  const createReport = async draft => {
+    try {
+      const report = await saveReport(draft);
+
+      setReports(previous => [report, ...previous]);
+
+      setToast('Laporan berhasil dikirim.');
+
+      setTimeout(() => setToast(''), 2300);
+
+      return report;
+    } catch (error) {
+      console.error('[Reports] Create failed:', error);
+
+      Alert.alert(
+        'Gagal mengirim laporan',
+        error.message || 'Terjadi kesalahan saat menyimpan laporan.'
+      );
+
+      throw error;
+    }
   };
-  const changeStatus = (report, status, note) => {
-    const next = reports.map(item => item.id === report.id ? {
-      ...item,
-      status,
-      note: note?.trim() || (status === 'Terverifikasi' ? 'Diperiksa oleh moderator demo.' : item.note),
-      updated: 'Baru saja',
-      history: [...(item.history || []), {
-        status,
-        note: note?.trim() || (status === 'Terverifikasi' ? 'Diperiksa oleh moderator demo.' : `Status diubah menjadi ${status}.`),
-        time: 'Baru saja',
-      }],
-      source: status === 'Terverifikasi' ? 'Laporan warga · diperiksa moderator' : item.source,
-    } : item);
-    setReports(next);
-    setToast(`${report.id} diperbarui · ${status}`);
-    setTimeout(() => setToast(''), 2300);
+  const changeStatus = async (report, status, note = '') => {
+    try {
+      await updateReportStatus(report.id, status, note);
+
+      // Ambil ulang agar status dan riwayat terbaru tersinkron.
+      const updatedReports = await fetchReports();
+
+      setReports(updatedReports);
+
+      setToast(`${report.id} diperbarui · ${status}`);
+
+      setTimeout(() => setToast(''), 2300);
+    } catch (error) {
+      console.error('[Reports] Status update failed:', error);
+
+      Alert.alert(
+        'Gagal memperbarui laporan',
+        error.message || 'Terjadi kesalahan saat mengubah status.'
+      );
+    }
   };
 
   const selectedReport = reports.find(report => report.id === selected);

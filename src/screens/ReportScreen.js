@@ -9,10 +9,28 @@ function ReportScreen({ onSubmit, onNavigate }) {
   const [category, setCategory] = useState('Banjir');
   const [place, setPlace] = useState(''); const [description, setDescription] = useState('');
   const [photoAdded, setPhotoAdded] = useState(false);
-  const submit = () => {
+  const submit = async () => {
     if (!place.trim() || !description.trim()) { Alert.alert('Lengkapi laporan', 'Isi lokasi dan deskripsi singkat agar laporan dapat dikirim.'); return; }
-    onSubmit({ category, place: place.trim(), description: description.trim() });
-    Alert.alert('Laporan terkirim', 'Laporan disimpan dengan status Menunggu verifikasi.', [{ text: 'Lihat laporan', onPress: () => onNavigate('map') }]);
+    try {
+      await onSubmit({
+        category,
+        place: place.trim(),
+        description: description.trim(),
+      });
+
+      Alert.alert(
+        'Laporan terkirim',
+        'Laporan berhasil disimpan dan menunggu verifikasi.',
+        [
+          {
+            text: 'Lihat laporan',
+            onPress: () => onNavigate('map'),
+          },
+        ]
+      );
+    } catch (error) {
+      // Error sudah ditampilkan oleh createReport di App.js.
+    }
   };
   return <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
