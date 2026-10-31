@@ -11,7 +11,7 @@ function publishedLabel(value) {
 
 export default function NewsScreen({ articles, loading, error, onRefresh }) {
   return <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-    <Text style={styles.eyebrow}>KABAR DARI PENERBIT</Text><Text style={styles.screenTitle}>Berita kebencanaan</Text><Text style={styles.screenSubtitle}>Berita ditautkan ke penerbit aslinya. Periksa tanggal dan sumber sebelum membagikan.</Text>
+    <Text style={styles.screenTitle}>Berita kebencanaan</Text><Text style={styles.screenSubtitle}>Berita ditautkan ke penerbit aslinya. Periksa tanggal dan sumber sebelum membagikan.</Text>
     <View style={styles.newsNotice}><Text style={styles.newsNoticeIcon}>i</Text><Text style={styles.newsNoticeText}>Berita media bukan laporan warga SIGAP dan bukan peringatan resmi. Untuk keselamatan, ikuti pengumuman otoritas.</Text></View>
     <View style={styles.newsToolbar}><Text style={styles.newsSource}>{NEWS_SOURCE}</Text><Pressable onPress={onRefresh}><Text style={styles.link}>Muat ulang  ↻</Text></Pressable></View>
     {error && articles?.length ? <Text style={styles.weatherWarning}>Feed gagal diperbarui · berita sebelumnya masih ditampilkan</Text> : null}

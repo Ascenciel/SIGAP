@@ -117,7 +117,6 @@ function ReportScreen({ onSubmit, onNavigate }) {
 
   return <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-      <Text style={styles.eyebrow}>BANTU WARGA SEKITAR</Text>
       <Text style={styles.screenTitle}>Kirim laporan</Text>
       <Text style={styles.screenSubtitle}>Bagikan kondisi yang kamu lihat. Laporan akan diperiksa sebelum ditandai terverifikasi.</Text>
       <View style={styles.formNotice}><Text style={styles.formNoticeIcon}>✓</Text><Text style={styles.formNoticeText}>Laporan baru berstatus <Text style={{ fontWeight: '800', color: C.blue }}>Menunggu verifikasi</Text>. Lokasi dan identitas pelapor tidak ditampilkan pada kartu publik.</Text></View>

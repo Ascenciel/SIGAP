@@ -278,9 +278,6 @@ export default function App() {
   };
 
   const selectedReport = reports.find(report => report.id === selected);
-  const pageTitles = { home: 'Beranda', map: 'Peta komunitas', report: 'Pelaporan', aid: 'Bantuan & posko', news: 'Berita kebencanaan' };
-  const pageTitle = selectedReport ? 'Detail laporan' : isModerator ? 'Ruang moderator' : pageTitles[tab];
-
   return <SafeAreaView style={styles.app}>
     <StatusBar barStyle="dark-content" backgroundColor={C.paper} />
     <View style={styles.header}>
@@ -296,7 +293,6 @@ export default function App() {
       {session?.user ? <Pressable accessibilityLabel="Keluar" onPress={() => supabase.auth.signOut()} style={{ padding: 8 }}><Text style={{ color: C.muted, fontSize: 10, fontWeight: '700' }}>Keluar</Text></Pressable> : null}
     </View>
 
-    <View style={styles.pageBar}><Text style={styles.pageTitle}>{pageTitle}</Text><Text style={styles.simTag}>{tab === 'news' && !selected ? 'SUMBER BERITA' : isModerator ? 'DEMO' : 'SIMULASI'}</Text></View>
     <View style={{ flex: 1 }}>
       {selectedReport ? <DetailScreen key={selectedReport.id} report={selectedReport} onBack={() => setSelected(null)} isModerator={isModerator} onStatus={changeStatus} />
         : isModerator ? <ModeratorScreen reports={reports} onSelect={chooseReport} onStatus={changeStatus} />

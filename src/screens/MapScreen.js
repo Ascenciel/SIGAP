@@ -26,7 +26,7 @@ function MapScreen({ reports, onSelect }) {
     }
   };
   return <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-    <Text style={styles.eyebrow}>PETA KOMUNITAS</Text><Text style={styles.screenTitle}>Laporan sekitar</Text><Text style={styles.screenSubtitle}>Lihat lokasi dan status setiap laporan.</Text>
+    <Text style={styles.screenTitle}>Laporan sekitar</Text><Text style={styles.screenSubtitle}>Lihat lokasi dan status setiap laporan.</Text>
     <Pressable onPress={showMyLocation} style={styles.locationPill}><Text style={{ color: C.green }}>⌖</Text><Text style={styles.locationText}>{userLocation ? 'Lokasi saya' : 'Surabaya, Jawa Timur'}</Text><Text style={styles.changeText}>{userLocation ? 'Perbarui' : 'Lokasi saya'}</Text></Pressable>
     <MapPreview key={userLocation ? `${userLocation.latitude},${userLocation.longitude}` : 'surabaya'} reports={filtered} onReport={onSelect} height={290} userLocation={userLocation} />
     <View style={styles.legendRow}><Legend color={C.green} label="Terverifikasi" /><Legend color={C.orange} label="Diperiksa" /><Legend color={C.blue} label="Menunggu" /></View>

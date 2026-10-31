@@ -9,10 +9,8 @@ function ModeratorScreen({ reports, onSelect }) {
   const pending = reports.filter(r => ['Menunggu verifikasi', 'Sedang diperiksa'].includes(r.status));
   const list = filter === 'Perlu ditinjau' ? pending : reports;
   return <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-    <Text style={styles.eyebrow}>RUANG MODERATOR</Text>
     <Text style={styles.screenTitle}>Tinjau laporan</Text>
     <Text style={styles.screenSubtitle}>Buka detail untuk memeriksa konteks dan mencatat alasan sebelum mengubah status.</Text>
-    <View style={styles.simulationBanner}><View style={styles.simIcon}><Text style={{ color: C.white, fontWeight: '800' }}>i</Text></View><Text style={styles.simText}><Text style={{ fontWeight: '800' }}>Data simulasi.</Text> Perubahan hanya tersimpan selama sesi ini.</Text></View>
     <View style={styles.statsRow}>
       <View style={styles.stat}><Text style={styles.statNumber}>{reports.filter(r => r.status === 'Menunggu verifikasi').length}</Text><Text style={styles.statLabel}>Menunggu</Text></View>
       <View style={styles.statDivider} />
