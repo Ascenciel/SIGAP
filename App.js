@@ -1,6 +1,7 @@
 import 'expo-dev-client';
-import React, { useEffect, useMemo, useState } from 'react';
-import { Linking, Platform, Pressable, SafeAreaView, StatusBar, Text, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Alert, Linking, Platform, Pressable, SafeAreaView, StatusBar, Text, View } from 'react-native';
+import * as Location from 'expo-location';
 import * as WebBrowser from 'expo-web-browser';
 import * as ExpoLinking from 'expo-linking';
 import C from './src/theme/colors';
@@ -35,12 +36,46 @@ export default function App() {
   const [tab, setTab] = useState('home');
   const [isModerator, setIsModerator] = useState(false);
   const [profileRole, setProfileRole] = useState('warga');
+  const [displayName, setDisplayName] = useState('');
+  const [weatherLocation, setWeatherLocation] = useState(null);
+  const [weatherLocationLoading, setWeatherLocationLoading] = useState(false);
   const [reports, setReports] = useState(SEED);
   const [selected, setSelected] = useState(null);
   const [toast, setToast] = useState('');
-  const weather = useRemoteData(fetchWeather);
+  const weatherLoader = useCallback(() => fetchWeather(weatherLocation), [weatherLocation]);
+  const weather = useRemoteData(weatherLoader);
   const news = useRemoteData(fetchNews);
   const reportCount = useMemo(() => reports.length, [reports]);
+
+  const updateWeatherLocation = useCallback(async (requestPermission = false) => {
+    setWeatherLocationLoading(true);
+    try {
+      let permission = await Location.getForegroundPermissionsAsync();
+      if (!permission.granted && requestPermission) permission = await Location.requestForegroundPermissionsAsync();
+      if (!permission.granted) return false;
+
+      const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      const coordinates = { latitude: position.coords.latitude, longitude: position.coords.longitude };
+      let area = 'Lokasi saat ini';
+      let address = null;
+      try { address = (await Location.reverseGeocodeAsync(coordinates))?.[0]; } catch { }
+      const addressParts = [...new Set([address?.district, address?.subregion, address?.city, address?.region].filter(Boolean))];
+      if (addressParts.length) area = addressParts.join(', ');
+      setWeatherLocation({ ...coordinates, area });
+      return true;
+    } catch {
+      return false;
+    } finally {
+      setWeatherLocationLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { updateWeatherLocation(false); }, [updateWeatherLocation]);
+
+  const chooseWeatherLocation = async () => {
+    const loaded = await updateWeatherLocation(true);
+    if (!loaded) Alert.alert('Lokasi tidak tersedia', 'Izinkan akses lokasi dan pastikan layanan lokasi perangkat aktif.');
+  };
 
   useEffect(() => {
     if (!supabase) { setAuthReady(true); return undefined; }
@@ -70,8 +105,10 @@ export default function App() {
 
   const loadProfileRole = async user => {
     if (!supabase || !user) { setProfileRole('warga'); return; }
-    const { data } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle();
+    const { data } = await supabase.from('profiles').select('role, full_name').eq('id', user.id).maybeSingle();
     setProfileRole(data?.role === 'moderator' ? 'moderator' : 'warga');
+    const fullName = data?.full_name?.trim() || user.user_metadata?.full_name?.trim() || user.user_metadata?.name?.trim();
+    setDisplayName(fullName?.split(/\s+/)[0] || user.email?.split('@')[0] || '');
     if (data?.role !== 'moderator') setIsModerator(false);
   };
 
@@ -256,7 +293,7 @@ export default function App() {
     <View style={{ flex: 1 }}>
       {selectedReport ? <DetailScreen key={selectedReport.id} report={selectedReport} onBack={() => setSelected(null)} isModerator={isModerator} onStatus={changeStatus} />
         : isModerator ? <ModeratorScreen reports={reports} onSelect={chooseReport} onStatus={changeStatus} />
-          : tab === 'home' ? <HomeScreen reports={reports} onNavigate={navigate} onSelect={chooseReport} isModerator={isModerator} weather={weather} news={news} onRefreshWeather={weather.refresh} onOpenNews={openNews} />
+          : tab === 'home' ? <HomeScreen reports={reports} displayName={displayName} onNavigate={navigate} onSelect={chooseReport} isModerator={isModerator} weather={weather} news={news} onRefreshWeather={weather.refresh} onUseWeatherLocation={chooseWeatherLocation} weatherLocationLoading={weatherLocationLoading} onOpenNews={openNews} />
             : tab === 'map' ? <MapScreen reports={reports} onSelect={chooseReport} />
               : tab === 'report' ? <ReportScreen onSubmit={createReport} onNavigate={navigate} />
                 : tab === 'aid' ? <AidScreen />
