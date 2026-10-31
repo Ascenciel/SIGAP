@@ -37,7 +37,11 @@ export default function App() {
   const [session, setSession] = useState(null);
   const [authReady, setAuthReady] = useState(false);
   const [tab, setTab] = useState('home');
-  const [isModerator, setIsModerator] = useState(false);
+  const [userRole, setUserRole] = useState('warga');
+  const [profileLoading, setProfileLoading] = useState(true);
+
+  const isModerator = ['moderator', 'admin'].includes(userRole);
+  const [isModeratorView, setIsModeratorView] = useState(false);
   const [reports, setReports] = useState([]);
   const [reportsLoading, setReportsLoading] = useState(false);
   const [selected, setSelected] = useState(null);
@@ -95,13 +99,92 @@ export default function App() {
 
   const syncProfile = async user => {
     if (!supabase || !user) return;
-    await supabase.from('profiles').upsert({
-      id: user.id,
-      email: user.email,
-      full_name: user.user_metadata?.full_name || user.user_metadata?.name || '',
-      avatar_url: user.user_metadata?.avatar_url || user.user_metadata?.picture || null,
-    }, { onConflict: 'id' });
+
+    const { data: existing, error: selectError } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (selectError) throw selectError;
+
+    if (existing) return;
+
+    const { error: insertError } = await supabase
+      .from('profiles')
+      .insert({
+        id: user.id,
+        email: user.email,
+        full_name:
+          user.user_metadata?.full_name ||
+          user.user_metadata?.name ||
+          '',
+        avatar_url:
+          user.user_metadata?.avatar_url ||
+          user.user_metadata?.picture ||
+          null,
+      });
+
+    // Abaikan duplicate key jika proses sinkronisasi berjalan bersamaan.
+    if (insertError && insertError.code !== '23505') {
+      throw insertError;
+    }
   };
+
+  useEffect(() => {
+    if (!session?.user) {
+      setUserRole('warga');
+      setProfileLoading(false);
+      return;
+    }
+
+    let active = true;
+
+    const loadUserRole = async () => {
+      try {
+        setProfileLoading(true);
+
+        // Pastikan profil pengguna sudah tersedia.
+        await syncProfile(session.user);
+
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', session.user.id)
+          .single();
+
+        if (error) throw error;
+
+        if (active) {
+          setUserRole(data.role || 'warga');
+        }
+      } catch (error) {
+        console.error('[Profile] Failed to load role:', error);
+
+        if (active) {
+          setUserRole('warga');
+          Alert.alert(
+            'Gagal memuat profil',
+            'Hak akses pengguna tidak dapat diperiksa. Mode warga akan digunakan.'
+          );
+        }
+      } finally {
+        if (active) setProfileLoading(false);
+      }
+    };
+
+    loadUserRole();
+
+    return () => {
+      active = false;
+    };
+  }, [session?.user?.id]);
+
+  useEffect(() => {
+    if (!isModerator) {
+      setIsModeratorView(false);
+    }
+  }, [isModerator]);
 
   const handleAuth = async ({ mode, name, email, password }) => {
     if (mode === 'signup') {
@@ -250,16 +333,21 @@ export default function App() {
     }
   };
   const changeStatus = async (report, status, note = '') => {
+    if (!isModerator) {
+      Alert.alert(
+        'Akses ditolak',
+        'Akun ini tidak memiliki izin untuk mengubah status laporan.'
+      );
+      return;
+    }
+
     try {
       await updateReportStatus(report.id, status, note);
 
-      // Ambil ulang agar status dan riwayat terbaru tersinkron.
       const updatedReports = await fetchReports();
-
       setReports(updatedReports);
 
       setToast(`${report.id} diperbarui · ${status}`);
-
       setTimeout(() => setToast(''), 2300);
     } catch (error) {
       console.error('[Reports] Status update failed:', error);
@@ -273,7 +361,15 @@ export default function App() {
 
   const selectedReport = reports.find(report => report.id === selected);
   const pageTitles = { home: 'Beranda', map: 'Peta komunitas', report: 'Pelaporan', aid: 'Bantuan & posko', news: 'Berita kebencanaan' };
-  const pageTitle = selectedReport ? 'Detail laporan' : isModerator ? 'Ruang moderator' : pageTitles[tab];
+  const pageTitle = selectedReport
+    ? 'Detail laporan'
+    : isModeratorView
+      ? 'Ruang moderator'
+      : pageTitles[tab];
+
+  if (profileLoading) {
+    return <View style={styles.app} />;
+  }
 
   return <View style={styles.app}>
     <StatusBar barStyle="dark-content" backgroundColor={C.paper} />
@@ -282,35 +378,156 @@ export default function App() {
         <View style={styles.brandMark}><Text style={styles.brandGlyph}>S</Text><View style={styles.brandDot} /></View>
         <View><Text style={styles.brandName}>SIGAP</Text><Text style={styles.brandSub}>INFORMASI KOMUNITAS</Text></View>
       </Pressable>
-      <Pressable onPress={() => { setSelected(null); setIsModerator(value => !value); }} style={[styles.modePill, isModerator && styles.modePillActive]}>
-        <View style={[styles.modeDot, isModerator && { backgroundColor: '#B6E8D8' }]} />
-        <Text style={[styles.modeText, isModerator && { color: C.white }]}>{isModerator ? 'MODERATOR' : 'WARGA'}</Text>
-        <Text style={[styles.modeChevron, isModerator && { color: C.white }]}>⌄</Text>
+      <Pressable
+        onPress={() => {
+          if (!isModerator) {
+            Alert.alert(
+              'Akses moderator',
+              'Akun ini tidak memiliki hak akses moderator.'
+            );
+            return;
+          }
+
+          setSelected(null);
+          setIsModeratorView(value => !value);
+        }}
+        style={[
+          styles.modePill,
+          isModeratorView && styles.modePillActive,
+        ]}
+      >
+        <View
+          style={[
+            styles.modeDot,
+            isModeratorView && { backgroundColor: '#B6E8D8' },
+          ]}
+        />
+        <Text
+          style={[
+            styles.modeText,
+            isModeratorView && { color: C.white },
+          ]}
+        >
+          {isModeratorView ? 'MODERATOR' : 'WARGA'}
+        </Text>
+        <Text
+          style={[
+            styles.modeChevron,
+            isModeratorView && { color: C.white },
+          ]}
+        >
+          ⌄
+        </Text>
       </Pressable>
       {session?.user ? <Pressable accessibilityLabel="Keluar" onPress={() => supabase.auth.signOut()} style={{ padding: 8 }}><Text style={{ color: C.muted, fontSize: 10, fontWeight: '700' }}>Keluar</Text></Pressable> : null}
     </View>
 
-    <View style={styles.pageBar}><Text style={styles.pageTitle}>{pageTitle}</Text><Text style={styles.simTag}>{tab === 'news' && !selected ? 'SUMBER BERITA' : isModerator ? 'DEMO' : 'SIMULASI'}</Text></View>
+    <View style={styles.pageBar}>
+      <Text style={styles.pageTitle}>{pageTitle}</Text>
+      <Text style={styles.simTag}>
+        {tab === 'news' && !selected
+          ? 'SUMBER BERITA'
+          : isModeratorView
+            ? 'MODERATOR'
+            : 'WARGA'}
+      </Text>
+    </View>
     <View style={{ flex: 1 }}>
-      {selectedReport ? <DetailScreen key={selectedReport.id} report={selectedReport} onBack={() => setSelected(null)} isModerator={isModerator} onStatus={changeStatus} />
-        : isModerator ? <ModeratorScreen reports={reports} onSelect={chooseReport} onStatus={changeStatus} />
-          : tab === 'home' ? <HomeScreen reports={reports} onNavigate={navigate} onSelect={chooseReport} isModerator={isModerator} weather={weather} news={news} onRefreshWeather={weather.refresh} onOpenNews={openNews} />
-            : tab === 'map' ? <MapScreen reports={reports} onSelect={chooseReport} />
-              : tab === 'report' ? <ReportScreen onSubmit={createReport} onNavigate={navigate} />
-                : tab === 'aid' ? <AidScreen />
-                  : <NewsScreen articles={news.data} loading={news.loading} error={news.error} onRefresh={news.refresh} />}
+      {selectedReport ? (
+        <DetailScreen
+          key={selectedReport.id}
+          report={selectedReport}
+          onBack={() => setSelected(null)}
+          isModerator={isModerator && isModeratorView}
+          onStatus={changeStatus}
+        />
+      ) : isModeratorView ? (
+        <ModeratorScreen
+          reports={reports}
+          onSelect={chooseReport}
+          onStatus={changeStatus}
+        />
+      ) : tab === 'home' ? (
+        <HomeScreen
+          reports={reports}
+          onNavigate={navigate}
+          onSelect={chooseReport}
+          isModerator={false}
+          weather={weather}
+          news={news}
+          onRefreshWeather={weather.refresh}
+          onOpenNews={openNews}
+        />
+      ) : tab === 'map' ? (
+        <MapScreen reports={reports} onSelect={chooseReport} />
+      ) : tab === 'report' ? (
+        <ReportScreen onSubmit={createReport} onNavigate={navigate} />
+      ) : tab === 'aid' ? (
+        <AidScreen />
+      ) : (
+        <NewsScreen
+          articles={news.data}
+          loading={news.loading}
+          error={news.error}
+          onRefresh={news.refresh}
+        />
+      )}
     </View>
 
     {toast ? <View style={styles.toast}><Text style={styles.toastText}>✓  {toast}</Text></View> : null}
-    {!isModerator && !selectedReport ? <View style={styles.tabBar}>{TABS.map(item =>
-      <Pressable key={item.id} onPress={() => navigate(item.id)} style={styles.tabItem}>
-        <View style={[styles.tabIconWrap, tab === item.id && styles.tabIconWrapActive]}>
-          <Text style={[styles.tabIcon, tab === item.id && styles.tabIconActive]}>{item.icon}</Text>
-          {item.id === 'map' && reportCount > 0 ? <View style={styles.tabBadge} /> : null}
-        </View>
-        <Text style={[styles.tabLabel, tab === item.id && styles.tabLabelActive]}>{item.label}</Text>
-      </Pressable>)}
-    </View> : null}
-    {isModerator && !selectedReport ? <View style={styles.tabBar}><Pressable onPress={() => setIsModerator(false)} style={styles.exitMode}><Text style={styles.exitModeIcon}>‹</Text><Text style={styles.exitModeText}>Kembali ke tampilan warga</Text></Pressable></View> : null}
+    {!isModeratorView && !selectedReport ? (
+      <View style={styles.tabBar}>
+        {TABS.map(item => (
+          <Pressable
+            key={item.id}
+            onPress={() => navigate(item.id)}
+            style={styles.tabItem}
+          >
+            <View
+              style={[
+                styles.tabIconWrap,
+                tab === item.id && styles.tabIconWrapActive,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.tabIcon,
+                  tab === item.id && styles.tabIconActive,
+                ]}
+              >
+                {item.icon}
+              </Text>
+
+              {item.id === 'map' && reportCount > 0 ? (
+                <View style={styles.tabBadge} />
+              ) : null}
+            </View>
+
+            <Text
+              style={[
+                styles.tabLabel,
+                tab === item.id && styles.tabLabelActive,
+              ]}
+            >
+              {item.label}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+    ) : null}
+
+    {isModeratorView && !selectedReport ? (
+      <View style={styles.tabBar}>
+        <Pressable
+          onPress={() => setIsModeratorView(false)}
+          style={styles.exitMode}
+        >
+          <Text style={styles.exitModeIcon}>‹</Text>
+          <Text style={styles.exitModeText}>
+            Kembali ke tampilan warga
+          </Text>
+        </Pressable>
+      </View>
+    ) : null}
   </View>;
 }
