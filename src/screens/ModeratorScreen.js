@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ScrollView, Pressable, Text, View } from 'react-native';
 import C from '../theme/colors';
 import styles from '../theme/styles';
