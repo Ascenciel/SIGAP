@@ -1,8 +1,13 @@
-import { Platform, StyleSheet } from 'react-native';
+import { Platform, StatusBar, StyleSheet } from 'react-native';
 import C from './colors';
 
 const styles = StyleSheet.create({
-  app: { flex: 1, backgroundColor: C.paper, paddingTop: Platform.OS === 'android' ? 5 : 0 },
+  app: {
+    flex: 1,
+    backgroundColor: C.paper,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0,
+    paddingBottom: Platform.OS === 'android' ? 24 : 0,
+  },
   header: { height: 63, paddingHorizontal: 21, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   brand: { flexDirection: 'row', alignItems: 'center', gap: 10 }, brandMark: { width: 36, height: 36, borderRadius: 12, backgroundColor: C.green, alignItems: 'center', justifyContent: 'center', position: 'relative' }, brandGlyph: { color: C.white, fontSize: 19, fontWeight: '900', fontStyle: 'italic' }, brandDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#C1E5D8', position: 'absolute', right: 6, top: 6 }, brandName: { color: C.ink, fontWeight: '900', fontSize: 18, letterSpacing: 1.4 }, brandSub: { color: C.muted, fontSize: 8, letterSpacing: 1, marginTop: 1, fontWeight: '700' },
   modePill: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 11, paddingVertical: 8, backgroundColor: C.white, borderRadius: 20, borderWidth: 1, borderColor: C.line }, modePillActive: { backgroundColor: C.deep, borderColor: C.deep }, modeDot: { width: 7, height: 7, borderRadius: 5, backgroundColor: C.green }, modeText: { fontSize: 9, fontWeight: '900', letterSpacing: 0.7, color: C.deep }, modeChevron: { color: C.muted, fontSize: 13, marginLeft: 1 },

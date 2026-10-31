@@ -1,6 +1,6 @@
 import 'expo-dev-client';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Linking, Platform, Pressable, StatusBar, Text, View } from 'react-native';
+import { Linking, Platform, Pressable, SafeAreaView, StatusBar, Text, View } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import * as ExpoLinking from 'expo-linking';
 import C from './src/theme/colors';
@@ -34,6 +34,7 @@ export default function App() {
   const [authReady, setAuthReady] = useState(false);
   const [tab, setTab] = useState('home');
   const [isModerator, setIsModerator] = useState(false);
+  const [profileRole, setProfileRole] = useState('warga');
   const [reports, setReports] = useState(SEED);
   const [selected, setSelected] = useState(null);
   const [toast, setToast] = useState('');
@@ -43,10 +44,16 @@ export default function App() {
 
   useEffect(() => {
     if (!supabase) { setAuthReady(true); return undefined; }
-    supabase.auth.getSession().then(({ data }) => { setSession(data.session); setAuthReady(true); });
+    supabase.auth.getSession().then(async ({ data }) => {
+      setSession(data.session);
+      if (data.session?.user) await loadProfileRole(data.session.user);
+      setAuthReady(true);
+    });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       setSession(nextSession);
-      if (nextSession?.user) setTimeout(() => syncProfile(nextSession.user).catch(() => { }), 0);
+      if (nextSession?.user) setTimeout(() => {
+        syncProfile(nextSession.user).then(() => loadProfileRole(nextSession.user)).catch(() => { });
+      }, 0);
     });
     return () => subscription.unsubscribe();
   }, []);
@@ -61,16 +68,25 @@ export default function App() {
     }, { onConflict: 'id' });
   };
 
+  const loadProfileRole = async user => {
+    if (!supabase || !user) { setProfileRole('warga'); return; }
+    const { data } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle();
+    setProfileRole(data?.role === 'moderator' ? 'moderator' : 'warga');
+    if (data?.role !== 'moderator') setIsModerator(false);
+  };
+
   const handleAuth = async ({ mode, name, email, password }) => {
     if (mode === 'signup') {
       const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { full_name: name } } });
       if (error) throw error;
       if (data.session && data.user) await syncProfile(data.user);
+      if (data.user) await loadProfileRole(data.user);
       return data.session ? '' : 'Pendaftaran berhasil. Periksa email Anda untuk konfirmasi sebelum masuk.';
     }
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
     await syncProfile(data.user);
+    await loadProfileRole(data.user);
     return '';
   };
 
@@ -166,6 +182,7 @@ export default function App() {
 
       if (sessionData.user) {
         await syncProfile(sessionData.user);
+        await loadProfileRole(sessionData.user);
       }
 
       return '';
@@ -176,8 +193,8 @@ export default function App() {
   };
 
 
-  if (!authReady) return <View style={styles.app} />;
-  if (!session) return <View style={styles.app}><StatusBar barStyle="dark-content" backgroundColor={C.paper} /><AuthScreen onSubmit={handleAuth} onGoogle={handleGoogle} configured={isSupabaseConfigured} /></View>;
+  if (!authReady) return <SafeAreaView style={styles.app} />;
+  if (!session) return <SafeAreaView style={styles.app}><StatusBar barStyle="dark-content" backgroundColor={C.paper} /><AuthScreen onSubmit={handleAuth} onGoogle={handleGoogle} configured={isSupabaseConfigured} /></SafeAreaView>;
 
   const navigate = id => { setSelected(null); setTab(id); };
   const chooseReport = report => setSelected(report.id);
@@ -220,18 +237,18 @@ export default function App() {
   const pageTitles = { home: 'Beranda', map: 'Peta komunitas', report: 'Pelaporan', aid: 'Bantuan & posko', news: 'Berita kebencanaan' };
   const pageTitle = selectedReport ? 'Detail laporan' : isModerator ? 'Ruang moderator' : pageTitles[tab];
 
-  return <View style={styles.app}>
+  return <SafeAreaView style={styles.app}>
     <StatusBar barStyle="dark-content" backgroundColor={C.paper} />
     <View style={styles.header}>
       <Pressable onPress={() => navigate('home')} style={styles.brand}>
         <View style={styles.brandMark}><Text style={styles.brandGlyph}>S</Text><View style={styles.brandDot} /></View>
         <View><Text style={styles.brandName}>SIGAP</Text><Text style={styles.brandSub}>INFORMASI KOMUNITAS</Text></View>
       </Pressable>
-      <Pressable onPress={() => { setSelected(null); setIsModerator(value => !value); }} style={[styles.modePill, isModerator && styles.modePillActive]}>
+      {profileRole === 'moderator' ? <Pressable accessibilityLabel="Ganti tampilan warga atau moderator" onPress={() => { setSelected(null); setIsModerator(value => !value); }} style={[styles.modePill, isModerator && styles.modePillActive]}>
         <View style={[styles.modeDot, isModerator && { backgroundColor: '#B6E8D8' }]} />
         <Text style={[styles.modeText, isModerator && { color: C.white }]}>{isModerator ? 'MODERATOR' : 'WARGA'}</Text>
         <Text style={[styles.modeChevron, isModerator && { color: C.white }]}>⌄</Text>
-      </Pressable>
+      </Pressable> : null}
       {session?.user ? <Pressable accessibilityLabel="Keluar" onPress={() => supabase.auth.signOut()} style={{ padding: 8 }}><Text style={{ color: C.muted, fontSize: 10, fontWeight: '700' }}>Keluar</Text></Pressable> : null}
     </View>
 
@@ -257,5 +274,5 @@ export default function App() {
       </Pressable>)}
     </View> : null}
     {isModerator && !selectedReport ? <View style={styles.tabBar}><Pressable onPress={() => setIsModerator(false)} style={styles.exitMode}><Text style={styles.exitModeIcon}>‹</Text><Text style={styles.exitModeText}>Kembali ke tampilan warga</Text></Pressable></View> : null}
-  </View>;
+  </SafeAreaView>;
 }

@@ -3,11 +3,20 @@ create table if not exists public.profiles (
   email text,
   full_name text not null default '',
   avatar_url text,
+  role text not null default 'warga' check (role in ('warga', 'moderator')),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 
+alter table public.profiles add column if not exists role text not null default 'warga'
+  check (role in ('warga', 'moderator'));
+
 alter table public.profiles enable row level security;
+
+-- Clients may edit profile details, but only a trusted database operator may grant roles.
+revoke insert, update on public.profiles from authenticated;
+grant insert (id, email, full_name, avatar_url) on public.profiles to authenticated;
+grant update (email, full_name, avatar_url, updated_at) on public.profiles to authenticated;
 
 drop policy if exists "Users can view their own profile" on public.profiles;
 create policy "Users can view their own profile"
@@ -45,6 +54,9 @@ begin
   return new;
 end;
 $$;
+
+-- Promote an account from the SQL editor after verifying its identity:
+-- update public.profiles set role = 'moderator' where email = 'moderator@example.com';
 
 drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created

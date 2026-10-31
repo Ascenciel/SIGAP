@@ -25,6 +25,7 @@
     },
     "android": {
       "package": "com.tripleT.sigap",
+      "edgeToEdgeEnabled": true,
       "adaptiveIcon": {
         "backgroundColor": "#F4F7F6"
       },
