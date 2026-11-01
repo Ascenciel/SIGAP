@@ -1,3 +1,4 @@
+
 {
   "expo": {
     "name": "SIGAP",
@@ -5,6 +6,7 @@
     "slug": "sigap-mobile",
     "scheme": "sigap",
     "version": "1.0.0",
+    "icon": "./assets/sigap-app-icon.png",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "splash": {
@@ -27,6 +29,14 @@
           "cameraPermission": "Izinkan SIGAP mengambil foto untuk laporan.",
           "microphonePermission": false
         }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "extraProguardRules": "-keep class * extends androidx.room.RoomDatabase { <init>(); }\n-keep class * extends androidx.work.InputMerger { <init>(); }"
+          }
+        }
       ]
     ],
     "ios": {
@@ -38,8 +48,8 @@
     },
     "android": {
       "package": "com.tripleT.sigap",
-      "edgeToEdgeEnabled": true,
       "adaptiveIcon": {
+        "foregroundImage": "./assets/sigap-app-icon.png",
         "backgroundColor": "#F4F7F6"
       },
       "permissions": [

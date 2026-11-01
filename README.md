@@ -1,19 +1,68 @@
 # SIGAP
-Sistem Informasi dan Gerak Aksi Penanggulangan Bencana
 
-## Autentikasi dan Supabase
+**Sistem Informasi dan Gerak Aksi Penanggulangan Bencana** adalah aplikasi komunitas untuk melihat informasi kebencanaan, memilih lokasi pada peta, dan mengirim laporan warga.
 
-Salin `.env.example` menjadi `.env`, lalu isi URL proyek Supabase dan **publishable/anon key**. Jangan pernah menaruh `service_role` key di aplikasi. Jalankan ulang Expo setelah mengubah environment variable.
+## Fitur
 
-Di Supabase, aktifkan penyedia Email dan Google pada **Authentication → Providers**. Untuk Google, masukkan Google OAuth Client ID dan Secret, lalu tambahkan callback URL yang ditampilkan Supabase ke daftar redirect URI di Google Cloud. Tambahkan `sigap://auth/callback` dan `exp://**` di **Authentication → URL Configuration → Redirect URLs**. `exp://**` hanya untuk pengujian Expo Go; build aplikasi memakai skema `sigap://`. Untuk web, tambahkan URL web aplikasi yang sedang digunakan (misalnya `http://localhost:3000/auth/callback`) ke daftar yang sama.
+- Autentikasi email dan Google melalui Supabase Auth.
+- Role warga dan moderator dari profil Supabase.
+- Formulir laporan dengan pemilihan lokasi di peta dan foto pendukung.
+- Informasi cuaca berdasarkan lokasi perangkat melalui Open-Meteo.
+- Berita kebencanaan dari feed berita eksternal.
+- Build Android melalui Expo Application Services (EAS).
 
-Login Google di Expo Go memakai URL sementara `exp://` yang berbeda sesuai alamat Metro. Kode aplikasi membentuk URL ini otomatis. Expo merekomendasikan development build untuk menguji OAuth dengan skema aplikasi yang stabil; setelah memakai development build, pastikan `sigap://auth/callback` diizinkan di Supabase.
+> **Status data:** tabel Supabase yang disiapkan saat ini adalah `profiles`. Laporan dan beberapa informasi bantuan masih memakai data lokal/contoh; laporan belum tersimpan atau tersinkron ke tabel Supabase.
 
-Jalankan [supabase/schema.sql](supabase/schema.sql) di Supabase SQL Editor. Baris profil dibuat otomatis saat akun baru dibuat, dan tiap pengguna hanya bisa membaca atau mengubah profilnya sendiri.
+## Persyaratan
 
-### Role warga dan moderator
+- Node.js dan npm.
+- Akun Supabase untuk autentikasi.
+- Akun Expo untuk membuat build dengan EAS.
+- Android Studio atau perangkat Android untuk menjalankan aplikasi.
 
-Semua akun baru memiliki role `warga`. Untuk memberi akses moderator, verifikasi akun terlebih dahulu lalu jalankan di Supabase SQL Editor:
+## Menjalankan aplikasi
+
+```sh
+npm ci
+npm start
+```
+
+Untuk menjalankan di web atau emulator, gunakan salah satu perintah berikut:
+
+```sh
+npm run web
+npm run android
+```
+
+## Konfigurasi Supabase
+
+1. Salin `.env.example` menjadi `.env`.
+2. Isi URL proyek dan publishable key (atau anon key lama):
+
+   ```env
+   EXPO_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
+   EXPO_PUBLIC_SUPABASE_ANON_KEY=<publishable-or-anon-key>
+   ```
+
+3. Jalankan ulang server Expo setelah mengubah `.env`.
+4. Di Supabase, aktifkan penyedia **Email** dan **Google** pada **Authentication → Providers**.
+5. Jalankan [`supabase/schema.sql`](supabase/schema.sql) di **SQL Editor**. Skrip ini membuat tabel `profiles` dan kebijakan akses profil.
+
+Jangan masukkan `service_role` key atau Google OAuth Client Secret ke aplikasi maupun variabel `EXPO_PUBLIC_*`. Simpan Google Client ID dan Secret pada pengaturan penyedia Google di Supabase.
+
+### Redirect URL OAuth
+
+Tambahkan URL callback aplikasi ke **Authentication → URL Configuration → Redirect URLs** di Supabase:
+
+- Development build: `sigap://auth/callback`
+- Expo Go: `exp://**` (khusus pengujian Expo Go)
+- Web: URL web yang digunakan, misalnya `http://localhost:8081/auth/callback`
+
+Untuk Google OAuth, masukkan callback URL yang diberikan Supabase ke daftar redirect URI pada Google Cloud Console. Development build disarankan untuk menguji OAuth karena memakai skema `sigap://` yang stabil.
+
+### Role moderator
+
+Akun baru otomatis mendapat role `warga`. Untuk mengangkat akun yang sudah diverifikasi menjadi moderator, jalankan di Supabase SQL Editor:
 
 ```sql
 update public.profiles
@@ -21,19 +70,52 @@ set role = 'moderator'
 where email = 'alamat-moderator@example.com';
 ```
 
-Role tidak dapat diubah dari aplikasi oleh pengguna. Moderator dapat berpindah tampilan warga/moderator dari tombol role di bagian atas aplikasi. Alur laporan saat ini masih menggunakan data simulasi lokal dan perubahan tidak disimpan setelah sesi berakhir.
+Role tidak dapat diubah oleh pengguna melalui aplikasi. Moderator dapat membuka tampilan moderator menggunakan kontrol role di header.
 
-Email/password and Google sign-in both create an entry in Supabase Auth; the trigger keeps `public.profiles` in sync. Email confirmation behavior is controlled by the Supabase project's Auth settings.
+## Build Android dengan EAS
 
-## EAS development build Android
+Konfigurasi profil build tersedia di [`eas.json`](eas.json):
 
-Konfigurasi build ada di `eas.json`. Untuk menyiapkan dan memasang development build di Android:
+| Profil | Kegunaan | Hasil Android |
+| --- | --- | --- |
+| `development` | Pengembangan dengan development client | APK |
+| `preview` | Uji coba/internal distribution | APK |
+| `production` | Rilis Google Play | AAB |
+
+Login dan tautkan proyek Expo (gunakan akun yang sesuai dengan `owner` di [`app.json`](app.json)):
 
 ```sh
 npx eas-cli login
 npm run eas:init
+```
+
+Tambahkan `EXPO_PUBLIC_SUPABASE_URL` dan `EXPO_PUBLIC_SUPABASE_ANON_KEY` pada environment EAS yang digunakan (`development`, `preview`, atau `production`). Setelah itu, buat build:
+
+```sh
 npm run build:dev:android
+npm run build:preview:android
+npm run build:production:android
+```
+
+Untuk build development, pasang APK di perangkat lalu jalankan Metro:
+
+```sh
 npm run start:dev-client
 ```
 
-Saat `eas:init`, masuk ke akun Expo yang sama dengan nilai `owner` di `app.json`; proses ini menautkan proyek dan menambahkan `extra.eas.projectId`. Setelah APK development terpasang di ponsel, jalankan server dengan `start:dev-client` lalu buka aplikasi SIGAP yang baru dipasang (bukan Expo Go). Di dashboard EAS, tambahkan `EXPO_PUBLIC_SUPABASE_URL` dan `EXPO_PUBLIC_SUPABASE_ANON_KEY` sebagai environment variables untuk environment `development`, `preview`, dan `production` yang digunakan build. Nilai ini adalah konfigurasi publik aplikasi; jangan masukkan Google Client Secret ke sana.
+Preview APK dapat dipasang langsung untuk pengujian. Build production menghasilkan Android App Bundle untuk distribusi melalui Google Play.
+
+### Melihat build EAS
+
+```sh
+npx eas-cli build:list --platform android
+npx eas-cli build:view <BUILD_ID>
+```
+
+## Catatan Android release
+
+Aturan ProGuard untuk constructor Room dan WorkManager sudah ditambahkan pada konfigurasi Expo dan [`android/app/proguard-rules.pro`](android/app/proguard-rules.pro). Jika mengubah aturan native atau menghadapi hasil build lama, buat build baru dengan cache bersih:
+
+```sh
+npx eas-cli build --platform android --profile preview --clear-cache
+```
