@@ -103,7 +103,7 @@ Untuk build development, pasang APK di perangkat lalu jalankan Metro:
 npm run start:dev-client
 ```
 
-Preview APK dapat dipasang langsung untuk pengujian. Build production menghasilkan Android App Bundle untuk distribusi melalui Google Play.
+Preview APK dapat dipasang langsung untuk pengujian. Build production menghasilkan Android App Bundle untuk distribusi melalui Google Play
 
 ### Melihat build EAS
 
