@@ -119,3 +119,24 @@ Aturan ProGuard untuk constructor Room dan WorkManager sudah ditambahkan pada ko
 ```sh
 npx eas-cli build --platform android --profile preview --clear-cache
 ```
+
+## Layanan dan komponen pihak ketiga
+
+SIGAP menggunakan layanan dan komponen berikut:
+
+| Layanan/komponen | Tujuan | Data atau interaksi |
+| --- | --- | --- |
+| Supabase Auth | Pendaftaran dan login email/Google serta profil akun | Email dan informasi profil yang diberikan pengguna. Saat ini tabel `profiles` digunakan; laporan belum dikirim ke Supabase. |
+| Open-Meteo | Mengambil prakiraan cuaca | Koordinat lokasi perangkat dikirim sebagai parameter permintaan cuaca. |
+| Google News RSS | Menampilkan tautan berita kebencanaan | Aplikasi meminta feed pencarian berita; ketika berita dibuka, pengguna diarahkan ke penerbit terkait. |
+| OpenStreetMap | Menampilkan peta dan ubin peta | Permintaan ubin peta dapat mengungkap alamat IP dan area peta yang dimuat ke penyedia ubin. |
+| Leaflet melalui unpkg | Kode pustaka untuk menggambar peta di WebView/web | Browser/WebView mengunduh berkas JavaScript dan CSS Leaflet dari CDN unpkg. |
+| Expo dan EAS | Kerangka aplikasi, modul perangkat, dan layanan build | EAS menerima kode proyek serta konfigurasi build saat proses build dijalankan. |
+
+SIGAP juga memakai pustaka sumber terbuka, termasuk React Native, Expo, Supabase JavaScript client, dan Leaflet. Nama dan merek pihak ketiga tetap menjadi milik pemiliknya masing-masing. Layanan pihak ketiga dapat memiliki ketentuan penggunaan dan kebijakan privasi sendiri.
+
+## Deklarasi penggunaan AI
+
+AI generatif digunakan sebagai alat bantu selama pengembangan SIGAP, termasuk untuk membantu menyusun dan memperbaiki kode, meninjau pesan error, serta merapikan dokumentasi. Pengembang tetap bertanggung jawab untuk meninjau, menguji, dan menyetujui perubahan sebelum dirilis.
+
+Tidak ada integrasi model AI atau layanan AI generatif yang dipanggil oleh aplikasi saat berjalan. Berdasarkan kode aplikasi saat ini, data pengguna tidak dikirim ke layanan AI.
