@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Image,
   ScrollView,
   Pressable,
@@ -57,6 +58,44 @@ function DetailScreen({ report, onBack, isModerator, onStatus }) {
         time: report.time,
       }]
   ).slice().reverse();
+
+  const handleStatusChange = state => {
+    const trimmedNote = note.trim();
+
+    if (state === 'Ditolak' && !trimmedNote) {
+      Alert.alert(
+        'Alasan penolakan diperlukan',
+        'Mohon masukkan alasan mengapa laporan ini ditolak sebelum melanjutkan.'
+      );
+      return;
+    }
+
+    const confirmStatus = () => {
+      onStatus(report, state, trimmedNote);
+    };
+
+    if (state === 'Ditolak') {
+      Alert.alert(
+        'Konfirmasi penolakan',
+        'Apakah kamu yakin ingin menolak laporan ini? Alasan penolakan akan disimpan dalam riwayat laporan.',
+        [
+          {
+            text: 'Batal',
+            style: 'cancel',
+          },
+          {
+            text: 'Tolak laporan',
+            style: 'destructive',
+            onPress: confirmStatus,
+          },
+        ]
+      );
+
+      return;
+    }
+
+    confirmStatus();
+  };
 
   return (
     <ScrollView
@@ -256,11 +295,12 @@ function DetailScreen({ report, onBack, isModerator, onStatus }) {
             {REVIEW_STATES.map(state => (
               <Pressable
                 key={state}
-                onPress={() => onStatus(report, state, note)}
+                onPress={() => handleStatusChange(state)}
+                disabled={report.status === state}
                 style={[
                   styles.statusAction,
-                  report.status === state &&
-                  styles.statusActionCurrent,
+                  report.status === state && styles.statusActionCurrent,
+                  report.status === state && { opacity: 0.6 },
                 ]}
               >
                 <Text
