@@ -32,13 +32,19 @@ function DetailScreen({ report, onBack, isModerator, onStatus }) {
 
         const result = await fetchReportPhotos(report.id);
 
-        if (active) setPhotos(result);
+        if (active) {
+          setPhotos(result);
+        }
       } catch (error) {
         console.error('[Reports] Failed to load photos:', error);
 
-        if (active) setPhotos([]);
+        if (active) {
+          setPhotos([]);
+        }
       } finally {
-        if (active) setPhotosLoading(false);
+        if (active) {
+          setPhotosLoading(false);
+        }
       }
     };
 
@@ -52,32 +58,34 @@ function DetailScreen({ report, onBack, isModerator, onStatus }) {
   const history = (
     report.history?.length
       ? report.history
-      : [{
-        status: report.status,
-        note: report.note || 'Laporan diterima untuk pemeriksaan.',
-        time: report.time,
-      }]
+      : [
+        {
+          status: report.status,
+          note: report.note || 'Laporan diterima untuk pemeriksaan.',
+          time: report.time,
+        },
+      ]
   ).slice().reverse();
 
   const handleStatusChange = state => {
+    if (state === report.status) {
+      return;
+    }
+
     const trimmedNote = note.trim();
 
-    if (state === 'Ditolak' && !trimmedNote) {
+    if (!trimmedNote) {
       Alert.alert(
-        'Alasan penolakan diperlukan',
-        'Mohon masukkan alasan mengapa laporan ini ditolak sebelum melanjutkan.'
+        'Catatan diperlukan',
+        'Tuliskan alasan atau sumber pemeriksaan sebelum mengubah status.'
       );
       return;
     }
 
-    const confirmStatus = () => {
-      onStatus(report, state, trimmedNote);
-    };
-
     if (state === 'Ditolak') {
       Alert.alert(
-        'Konfirmasi penolakan',
-        'Apakah kamu yakin ingin menolak laporan ini? Alasan penolakan akan disimpan dalam riwayat laporan.',
+        'Tolak laporan?',
+        'Laporan akan ditandai sebagai ditolak. Pastikan alasan penolakan sudah sesuai.',
         [
           {
             text: 'Batal',
@@ -86,7 +94,7 @@ function DetailScreen({ report, onBack, isModerator, onStatus }) {
           {
             text: 'Tolak laporan',
             style: 'destructive',
-            onPress: confirmStatus,
+            onPress: () => onStatus(report, state, trimmedNote),
           },
         ]
       );
@@ -94,7 +102,7 @@ function DetailScreen({ report, onBack, isModerator, onStatus }) {
       return;
     }
 
-    confirmStatus();
+    onStatus(report, state, trimmedNote);
   };
 
   return (
@@ -102,15 +110,20 @@ function DetailScreen({ report, onBack, isModerator, onStatus }) {
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
     >
-      <Pressable onPress={onBack} style={styles.backButton}>
+      <Pressable
+        onPress={onBack}
+        style={styles.backButton}
+      >
         <Text style={styles.backText}>‹  Kembali</Text>
       </Pressable>
 
       <Text style={styles.eyebrow}>
-        {report.id} · {report.category.toUpperCase()}
+        {report.id}  ·  {report.category.toUpperCase()}
       </Text>
 
-      <Text style={styles.detailTitle}>{report.title}</Text>
+      <Text style={styles.detailTitle}>
+        {report.title}
+      </Text>
 
       <View
         style={{
@@ -124,33 +137,11 @@ function DetailScreen({ report, onBack, isModerator, onStatus }) {
         <Text style={styles.metaText}>{report.time}</Text>
       </View>
 
-      {/* Lokasi laporan */}
       <View style={styles.detailMap}>
-        {Number.isFinite(Number(report.latitude)) &&
-          Number.isFinite(Number(report.longitude)) &&
-          report.latitude !== null &&
-          report.longitude !== null ? (
-          <MapPreview
-            reports={[report]}
-            onReport={() => { }}
-            height={190}
-          />
-        ) : (
-          <View
-            style={{
-              height: 190,
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: '#EDF0EF',
-              borderRadius: 14,
-              padding: 20,
-            }}
-          >
-            <Text style={{ color: C.muted, textAlign: 'center' }}>
-              Koordinat GPS tidak tersedia untuk laporan ini.
-            </Text>
-          </View>
-        )}
+        <MapPreview
+          reports={report.status === 'Ditolak' ? [] : [report]}
+          onReport={() => { }}
+        />
 
         <View style={styles.detailLocation}>
           <Text style={{ color: C.green }}>⌖</Text>
@@ -158,64 +149,44 @@ function DetailScreen({ report, onBack, isModerator, onStatus }) {
         </View>
       </View>
 
-      {/* Keterangan */}
-      <Text style={styles.sectionHeading}>Keterangan laporan</Text>
+      <Text style={styles.sectionHeading}>
+        Keterangan laporan
+      </Text>
+
       <Text style={styles.detailDescription}>
         {report.description}
       </Text>
 
-      {/* Foto pendukung */}
-      <Text style={[styles.sectionHeading, { marginTop: 20 }]}>
-        Foto pendukung
-      </Text>
+      {(photos.length > 0 || photosLoading) && (
+        <View style={styles.detailPhoto}>
+          <Text style={styles.infoLabel}>
+            FOTO PENDUKUNG
+          </Text>
 
-      {photosLoading ? (
-        <View style={{ padding: 24, alignItems: 'center' }}>
-          <ActivityIndicator color={C.green} />
-          <Text style={[styles.helperText, { marginTop: 8 }]}>
-            Memuat foto laporan...
-          </Text>
-        </View>
-      ) : photos.length > 0 ? (
-        <View style={{ gap: 12, marginTop: 10 }}>
-          {photos.map(photo => (
-            <Image
-              key={photo.id}
-              source={{ uri: photo.url }}
-              style={{
-                width: '100%',
-                height: 220,
-                borderRadius: 14,
-                backgroundColor: '#EDF0EF',
-              }}
-              resizeMode="cover"
+          {photosLoading ? (
+            <ActivityIndicator
+              color={C.green}
+              style={{ marginVertical: 16 }}
             />
-          ))}
-        </View>
-      ) : (
-        <View
-          style={{
-            padding: 18,
-            marginTop: 10,
-            borderRadius: 12,
-            backgroundColor: '#EDF0EF',
-          }}
-        >
-          <Text
-            style={{
-              color: C.muted,
-              textAlign: 'center',
-            }}
-          >
-            Tidak ada foto pendukung pada laporan ini.
-          </Text>
+          ) : (
+            photos.map(photo => (
+              <Image
+                key={photo.id}
+                source={{ uri: photo.url }}
+                style={styles.detailPhotoImage}
+                resizeMode="cover"
+                accessibilityLabel="Foto pendukung laporan"
+              />
+            ))
+          )}
         </View>
       )}
 
-      {/* Informasi laporan */}
       <View style={styles.infoRow}>
         <Text style={styles.infoLabel}>SUMBER</Text>
-        <Text style={styles.infoValue}>{report.source}</Text>
+        <Text style={styles.infoValue}>
+          {report.source || 'Laporan komunitas'}
+        </Text>
       </View>
 
       <View style={styles.infoRow}>
@@ -226,13 +197,15 @@ function DetailScreen({ report, onBack, isModerator, onStatus }) {
       </View>
 
       <View style={styles.noteBox}>
-        <Text style={styles.noteTitle}>Catatan pemeriksaan</Text>
+        <Text style={styles.noteTitle}>
+          Catatan pemeriksaan
+        </Text>
+
         <Text style={styles.noteText}>
           {report.note || 'Belum ada catatan pemeriksaan.'}
         </Text>
       </View>
 
-      {/* Riwayat status */}
       <Text
         style={[
           styles.sectionHeading,
@@ -263,6 +236,7 @@ function DetailScreen({ report, onBack, isModerator, onStatus }) {
               <Text style={styles.historyStatus}>
                 {event.status}
               </Text>
+
               <Text style={styles.historyTime}>
                 {event.time}
               </Text>
@@ -275,11 +249,20 @@ function DetailScreen({ report, onBack, isModerator, onStatus }) {
         </View>
       ))}
 
-      {/* Moderator */}
-      {isModerator ? (
+      {isModerator && (
         <>
-          <Text style={[styles.sectionHeading, { marginTop: 23 }]}>
+          <Text
+            style={[
+              styles.sectionHeading,
+              { marginTop: 23 },
+            ]}
+          >
             Perbarui status
+          </Text>
+
+          <Text style={styles.helperText}>
+            Catatan wajib untuk perubahan status dan akan tampil
+            di riwayat laporan.
           </Text>
 
           <TextInput
@@ -295,18 +278,26 @@ function DetailScreen({ report, onBack, isModerator, onStatus }) {
             {REVIEW_STATES.map(state => (
               <Pressable
                 key={state}
-                onPress={() => handleStatusChange(state)}
+                accessibilityRole="button"
+                accessibilityState={{
+                  selected: report.status === state,
+                  disabled: report.status === state,
+                }}
                 disabled={report.status === state}
+                onPress={() => handleStatusChange(state)}
                 style={[
                   styles.statusAction,
-                  report.status === state && styles.statusActionCurrent,
-                  report.status === state && { opacity: 0.6 },
+                  report.status === state &&
+                  styles.statusActionCurrent,
+                  report.status === state && { opacity: 0.7 },
                 ]}
               >
                 <Text
                   style={[
                     styles.statusActionText,
-                    report.status === state && { color: C.green },
+                    report.status === state && {
+                      color: C.green,
+                    },
                   ]}
                 >
                   {state === report.status ? '✓ ' : ''}
@@ -316,13 +307,14 @@ function DetailScreen({ report, onBack, isModerator, onStatus }) {
             ))}
           </View>
         </>
-      ) : null}
+      )}
 
       <View style={styles.mapCaveat}>
         <Text style={styles.caveatIcon}>ⓘ</Text>
+
         <Text style={styles.caveatText}>
-          Status komunitas ini bukan arahan resmi. Ikuti informasi dari
-          otoritas terkait.
+          Status komunitas ini bukan arahan resmi. Ikuti
+          informasi dari otoritas terkait.
         </Text>
       </View>
 

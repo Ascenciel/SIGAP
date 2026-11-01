@@ -11,6 +11,18 @@ Login Google di Expo Go memakai URL sementara `exp://` yang berbeda sesuai alama
 
 Jalankan [supabase/schema.sql](supabase/schema.sql) di Supabase SQL Editor. Baris profil dibuat otomatis saat akun baru dibuat, dan tiap pengguna hanya bisa membaca atau mengubah profilnya sendiri.
 
+### Role warga dan moderator
+
+Semua akun baru memiliki role `warga`. Untuk memberi akses moderator, verifikasi akun terlebih dahulu lalu jalankan di Supabase SQL Editor:
+
+```sql
+update public.profiles
+set role = 'moderator'
+where email = 'alamat-moderator@example.com';
+```
+
+Role tidak dapat diubah dari aplikasi oleh pengguna. Moderator dapat berpindah tampilan warga/moderator dari tombol role di bagian atas aplikasi. Alur laporan saat ini masih menggunakan data simulasi lokal dan perubahan tidak disimpan setelah sesi berakhir.
+
 Email/password and Google sign-in both create an entry in Supabase Auth; the trigger keeps `public.profiles` in sync. Email confirmation behavior is controlled by the Supabase project's Auth settings.
 
 ## EAS development build Android

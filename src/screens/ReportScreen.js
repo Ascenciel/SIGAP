@@ -89,7 +89,10 @@ function ReportScreen({ onSubmit, onNavigate }) {
       if (!result.canceled && result.assets?.length) {
         const selected = result.assets[0];
 
-        if (selected.fileSize && selected.fileSize > 5 * 1024 * 1024) {
+        if (
+          selected.fileSize &&
+          selected.fileSize > 5 * 1024 * 1024
+        ) {
           Alert.alert(
             'Ukuran foto terlalu besar',
             'Pilih foto dengan ukuran maksimal 5 MB.'
@@ -145,7 +148,7 @@ function ReportScreen({ onSubmit, onNavigate }) {
         ]
       );
     } catch (error) {
-      // Error sudah ditampilkan oleh createReport di App.js.
+      // Error ditangani oleh createReport di App.js.
     } finally {
       setSubmitting(false);
     }
@@ -162,7 +165,9 @@ function ReportScreen({ onSubmit, onNavigate }) {
         showsVerticalScrollIndicator={false}
       >
         <Text style={styles.eyebrow}>BANTU WARGA SEKITAR</Text>
+
         <Text style={styles.screenTitle}>Kirim laporan</Text>
+
         <Text style={styles.screenSubtitle}>
           Bagikan kondisi yang kamu lihat. Laporan akan diperiksa sebelum
           ditandai terverifikasi.
@@ -180,6 +185,7 @@ function ReportScreen({ onSubmit, onNavigate }) {
         </View>
 
         <FieldLabel>Kategori kejadian</FieldLabel>
+
         <View style={styles.categoryGrid}>
           {CATEGORIES.map(c => (
             <Pressable
@@ -203,6 +209,7 @@ function ReportScreen({ onSubmit, onNavigate }) {
         </View>
 
         <FieldLabel>Lokasi kejadian</FieldLabel>
+
         <View style={styles.inputWrap}>
           <Text style={styles.inputIcon}>⌖</Text>
           <TextInput
@@ -216,7 +223,7 @@ function ReportScreen({ onSubmit, onNavigate }) {
 
         <Pressable
           onPress={getCurrentLocation}
-          disabled={loadingLocation}
+          disabled={loadingLocation || submitting}
           style={{
             marginTop: 10,
             padding: 12,
@@ -226,6 +233,7 @@ function ReportScreen({ onSubmit, onNavigate }) {
             alignItems: 'center',
             justifyContent: 'center',
             gap: 8,
+            opacity: loadingLocation || submitting ? 0.6 : 1,
           }}
         >
           {loadingLocation ? (
@@ -233,6 +241,7 @@ function ReportScreen({ onSubmit, onNavigate }) {
           ) : (
             <Text style={{ color: C.green, fontSize: 17 }}>⌖</Text>
           )}
+
           <Text style={{ color: C.green, fontWeight: '700' }}>
             {loadingLocation
               ? 'Mengambil lokasi...'
@@ -257,6 +266,7 @@ function ReportScreen({ onSubmit, onNavigate }) {
         </Text>
 
         <FieldLabel>Waktu kejadian</FieldLabel>
+
         <View style={styles.readonlyField}>
           <Text style={styles.inputIcon}>◷</Text>
           <Text style={styles.readonlyText}>
@@ -265,6 +275,7 @@ function ReportScreen({ onSubmit, onNavigate }) {
         </View>
 
         <FieldLabel>Deskripsi</FieldLabel>
+
         <TextInput
           multiline
           value={description}
@@ -274,6 +285,7 @@ function ReportScreen({ onSubmit, onNavigate }) {
           textAlignVertical="top"
           style={[styles.input, styles.textArea]}
         />
+
         <Text style={styles.helperText}>
           Tuliskan yang kamu lihat. Jangan menyimpulkan area aman atau memberi
           arahan darurat.
@@ -298,6 +310,7 @@ function ReportScreen({ onSubmit, onNavigate }) {
                 }}
                 resizeMode="cover"
               />
+
               <Text style={styles.uploadText}>Foto dipilih</Text>
               <Text style={styles.uploadSub}>
                 Ketuk untuk mengganti foto
@@ -318,6 +331,7 @@ function ReportScreen({ onSubmit, onNavigate }) {
           <Pressable
             onPress={() => setPhoto(null)}
             style={{ alignSelf: 'flex-end', padding: 8 }}
+            disabled={submitting}
           >
             <Text style={{ color: C.red, fontWeight: '700' }}>
               Hapus foto

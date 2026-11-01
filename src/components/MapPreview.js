@@ -2,6 +2,7 @@
 import React, { useMemo } from 'react';
 import { View } from 'react-native';
 import { WebView } from 'react-native-webview';
+
 import styles from '../theme/styles';
 import { STATUS } from '../data/reports';
 
@@ -15,21 +16,42 @@ function MapPreview({
   onReport,
   height = 175,
   userLocation,
+  selectable = false,
+  selectedLocation,
+  onLocationSelect,
 }) {
-  const coordinates = reports.filter(report =>
-    report.latitude !== null &&
-    report.latitude !== undefined &&
-    report.longitude !== null &&
-    report.longitude !== undefined &&
-    report.latitude !== '' &&
-    report.longitude !== '' &&
-    Number.isFinite(Number(report.latitude)) &&
-    Number.isFinite(Number(report.longitude)) &&
-    Math.abs(Number(report.latitude)) <= 90 &&
-    Math.abs(Number(report.longitude)) <= 180
-  );
+  const coordinates = reports
+    .filter(report => report.status !== 'Ditolak')
+    .filter(report => {
+      if (
+        report.latitude === null ||
+        report.latitude === undefined ||
+        report.latitude === '' ||
+        report.longitude === null ||
+        report.longitude === undefined ||
+        report.longitude === ''
+      ) {
+        return false;
+      }
+
+      const latitude = Number(report.latitude);
+      const longitude = Number(report.longitude);
+
+      return (
+        Number.isFinite(latitude) &&
+        Number.isFinite(longitude) &&
+        latitude >= -90 &&
+        latitude <= 90 &&
+        longitude >= -180 &&
+        longitude <= 180
+      );
+    });
 
   const center = useMemo(() => {
+    if (selectedLocation) {
+      return selectedLocation;
+    }
+
     if (userLocation) {
       return {
         latitude: userLocation.latitude,
@@ -44,6 +66,7 @@ function MapPreview({
             (sum, item) => sum + Number(item.latitude),
             0
           ) / coordinates.length,
+
         longitude:
           coordinates.reduce(
             (sum, item) => sum + Number(item.longitude),
@@ -53,7 +76,7 @@ function MapPreview({
     }
 
     return SURABAYA;
-  }, [userLocation, reports]);
+  }, [userLocation, reports, selectedLocation]);
 
   const mapHtml = useMemo(() => {
     const markerData = coordinates.map(report => ({
@@ -63,8 +86,10 @@ function MapPreview({
       title: report.title || 'Laporan',
       category: report.category || 'Lainnya',
       status: report.status || 'Menunggu verifikasi',
-      color: (STATUS[report.status] ||
-        STATUS['Menunggu verifikasi']).dot,
+      color: (
+        STATUS[report.status] ||
+        STATUS['Menunggu verifikasi']
+      ).dot,
     }));
 
     // Escape karakter HTML agar data laporan aman
@@ -75,8 +100,9 @@ function MapPreview({
       .replace(/&/g, '\\u0026');
 
     const safeCenter = JSON.stringify(center);
-
     const safeUserLocation = JSON.stringify(userLocation);
+    const safeSelectedLocation = JSON.stringify(selectedLocation);
+    const safeSelectable = JSON.stringify(selectable);
 
     const initialZoom = userLocation
       ? 14
@@ -129,6 +155,8 @@ function MapPreview({
             const markers = ${safeMarkers};
             const center = ${safeCenter};
             const userLocation = ${safeUserLocation};
+            const selectedLocation = ${safeSelectedLocation};
+            const selectable = ${safeSelectable};
 
             const map = L.map('map', {
               zoomControl: true
@@ -145,6 +173,7 @@ function MapPreview({
               }
             ).addTo(map);
 
+            // Marker laporan
             markers.forEach(report => {
               const marker = L.circleMarker(
                 [report.latitude, report.longitude],
@@ -174,6 +203,7 @@ function MapPreview({
               });
             });
 
+            // Marker lokasi pengguna
             if (userLocation) {
               L.circleMarker(
                 [userLocation.latitude, userLocation.longitude],
@@ -189,6 +219,50 @@ function MapPreview({
               .bindPopup('Lokasi Anda');
             }
 
+            // Marker lokasi yang dipilih
+            let selectedMarker = null;
+
+            function showSelectedLocation(point) {
+              if (selectedMarker) {
+                map.removeLayer(selectedMarker);
+              }
+
+              selectedMarker = L.circleMarker(
+                [point.latitude, point.longitude],
+                {
+                  radius: 10,
+                  color: '#ffffff',
+                  weight: 3,
+                  fillColor: '#087e70',
+                  fillOpacity: 1
+                }
+              ).addTo(map);
+            }
+
+            if (selectedLocation) {
+              showSelectedLocation(selectedLocation);
+            }
+
+            // Memilih koordinat dengan mengetuk peta
+            if (selectable) {
+              map.on('click', event => {
+                const point = {
+                  latitude: event.latlng.lat,
+                  longitude: event.latlng.lng
+                };
+
+                showSelectedLocation(point);
+
+                window.ReactNativeWebView.postMessage(
+                  JSON.stringify({
+                    type: 'select-location',
+                    ...point
+                  })
+                );
+              });
+            }
+
+            // Escape karakter HTML
             function escapeHtml(value) {
               return String(value).replace(/[&<>"']/g, char => ({
                 '&': '&amp;',
@@ -202,7 +276,13 @@ function MapPreview({
         </body>
       </html>
     `;
-  }, [reports, userLocation, center]);
+  }, [
+    reports,
+    userLocation,
+    center,
+    selectable,
+    selectedLocation,
+  ]);
 
   const handleMessage = event => {
     try {
@@ -216,6 +296,15 @@ function MapPreview({
         if (selectedReport) {
           onReport?.(selectedReport);
         }
+      } else if (
+        message.type === 'select-location' &&
+        Number.isFinite(message.latitude) &&
+        Number.isFinite(message.longitude)
+      ) {
+        onLocationSelect?.({
+          latitude: message.latitude,
+          longitude: message.longitude,
+        });
       }
     } catch (error) {
       console.warn('Map message error:', error);
@@ -232,7 +321,10 @@ function MapPreview({
         scrollEnabled={false}
         nestedScrollEnabled={false}
         onMessage={handleMessage}
-        style={{ flex: 1, backgroundColor: '#e8f0ed' }}
+        style={{
+          flex: 1,
+          backgroundColor: '#e8f0ed',
+        }}
       />
     </View>
   );
